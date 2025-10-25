@@ -1,0 +1,5 @@
+dataset_type: coco
+data_path: data_cam
+labels_path: data_cam/_annotations.coco.json
+name: data_cam
+persistent: false

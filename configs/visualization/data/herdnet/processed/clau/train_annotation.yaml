@@ -1,0 +1,5 @@
+dataset_type: coco
+data_path: patches/train/
+labels_path: patches/train/_annotations.coco.json
+name: clau_train
+persistent: false
