@@ -1,18 +1,13 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+@import "tailwindcss";
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   min-height: 100vh;
+  background: linear-gradient(to bottom right, rgb(168 85 247), rgb(126 34 206));
   padding: 2rem;
-  color: #333;
 }
 
 #root {
-  max-width: 1400px;
-  margin: 0 auto;
+  max-width: 80rem;
+  margin-left: auto;
+  margin-right: auto;
 }
