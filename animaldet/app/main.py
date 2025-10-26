@@ -12,6 +12,7 @@ from PIL import Image
 from pydantic import BaseModel
 
 from animaldet.inference.rfdetr import RFDETRInference
+from animaldet.inference.rfdetr_onnx import RFDETRONNXInference
 from animaldet.app.class_names import get_class_name
 
 
@@ -59,21 +60,34 @@ class RFDETRService:
         resolution: int = 512,
         device: str = "cuda",
         use_stitcher: bool = True,
+        runtime: str = "onnx",
     ):
         self.model_path = model_path
         self.model_name = Path(model_path).stem
         self.confidence_threshold = confidence_threshold
         self.resolution = resolution
+        self.runtime = runtime
 
-        # Load model
-        self.model = RFDETRInference(
-            model_path=model_path,
-            confidence_threshold=confidence_threshold,
-            nms_threshold=nms_threshold,
-            resolution=resolution,
-            device=device,
-            use_stitcher=use_stitcher,
-        )
+        # Load model based on runtime
+        if runtime == "onnx":
+            self.model = RFDETRONNXInference(
+                model_path=model_path,
+                confidence_threshold=confidence_threshold,
+                nms_threshold=nms_threshold,
+                resolution=resolution,
+                use_stitcher=use_stitcher,
+            )
+        elif runtime == "torchscript":
+            self.model = RFDETRInference(
+                model_path=model_path,
+                confidence_threshold=confidence_threshold,
+                nms_threshold=nms_threshold,
+                resolution=resolution,
+                device=device,
+                use_stitcher=use_stitcher,
+            )
+        else:
+            raise ValueError(f"Unsupported runtime: {runtime}. Choose 'onnx' or 'torchscript'")
 
     def predict(self, image_bytes: bytes) -> dict:
         """Run inference on image bytes.
@@ -165,22 +179,24 @@ app = FastAPI(
 
 @app.post("/api/initialize")
 async def initialize_model(
-    model_path: str = "model.pt",
+    model_path: str = "model.onnx",
     confidence_threshold: float = 0.5,
     nms_threshold: float = 0.45,
     resolution: int = 512,
     device: str = "cuda",
     use_stitcher: bool = True,
+    runtime: str = "onnx",
 ):
     """Initialize the model service.
 
     Args:
-        model_path: Path to model file (.pt or .onnx)
+        model_path: Path to model file (.pt for torchscript or .onnx for onnx)
         confidence_threshold: Minimum confidence for detections
         nms_threshold: IoU threshold for NMS
         resolution: Model input resolution
-        device: Device for inference ('cuda' or 'cpu')
+        device: Device for inference ('cuda' or 'cpu', only for torchscript)
         use_stitcher: Use stitching for large images
+        runtime: Runtime to use ('onnx' or 'torchscript', default: 'onnx')
     """
     global _model_service
     try:
@@ -191,8 +207,9 @@ async def initialize_model(
             resolution=resolution,
             device=device,
             use_stitcher=use_stitcher,
+            runtime=runtime,
         )
-        return {"status": "success", "message": f"Model loaded from {model_path}"}
+        return {"status": "success", "message": f"Model loaded from {model_path} using {runtime} runtime"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load model: {str(e)}")
 

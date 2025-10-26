@@ -1,15 +1,13 @@
-"""RF-DETR ONNX/TorchScript inference with stitching support for large images.
+"""RF-DETR TorchScript inference with stitching support for large images.
 
-This module provides efficient inference for RF-DETR models using ONNX or TorchScript,
+This module provides efficient inference for RF-DETR models using TorchScript,
 with automatic stitching for images larger than the model's resolution.
 
 Usage:
     from animaldet.inference.rfdetr import RFDETRInference
 
-    # Load model (ONNX or TorchScript)
-    model = RFDETRInference("model.onnx", confidence_threshold=0.5)
-    # or
-    model = RFDETRInference("model.pt", confidence_threshold=0.5)
+    # Load model
+    model = RFDETRInference("model.pt", confidence_threshold=0.5, device="cuda")
 
     # Run inference
     detections = model.predict("image.jpg")
@@ -25,15 +23,15 @@ from albumentations.pytorch import ToTensorV2
 
 
 class RFDETRInference:
-    """RF-DETR inference using ONNX or TorchScript.
+    """RF-DETR inference using TorchScript.
 
     Supports automatic stitching for images larger than model resolution.
 
     Args:
-        model_path: Path to model file (.onnx or .pt)
+        model_path: Path to TorchScript model file (.pt)
         confidence_threshold: Minimum confidence score for detections
         nms_threshold: IoU threshold for NMS
-        resolution: Model input resolution (auto-detect if not provided)
+        resolution: Model input resolution (default: 512)
         device: Device for inference ('cuda' or 'cpu')
         use_stitcher: Use stitcher for large images
     """
@@ -51,18 +49,14 @@ class RFDETRInference:
         self.confidence_threshold = confidence_threshold
         self.nms_threshold = nms_threshold
         self.use_stitcher = use_stitcher
-        self.device = device
+        self.device = device if torch.cuda.is_available() else "cpu"
         self.resolution = resolution or 512
 
-        # Load model based on file extension
-        if self.model_path.suffix == ".pt":
-            self._load_torchscript()
-        elif self.model_path.suffix == ".onnx":
-            self._load_onnx()
-            if resolution:
-                self.resolution = resolution
-        else:
-            raise ValueError(f"Unsupported format: {self.model_path.suffix}. Use .pt or .onnx")
+        # Load TorchScript model
+        if self.model_path.suffix != ".pt":
+            raise ValueError(f"Unsupported format: {self.model_path.suffix}. Use .pt for TorchScript models")
+
+        self._load_torchscript()
 
         # Preprocessing
         self.transform = A.Compose([
@@ -70,25 +64,15 @@ class RFDETRInference:
             ToTensorV2(),
         ])
 
-    def _load_onnx(self):
-        """Load ONNX model."""
-        import onnxruntime as ort
-        providers = ["CUDAExecutionProvider", "CPUExecutionProvider"] if self.device == "cuda" else ["CPUExecutionProvider"]
-        self.session = ort.InferenceSession(str(self.model_path), providers=providers)
-        self.model_type = "onnx"
-        self.resolution = self.session.get_inputs()[0].shape[2]
-
     def _load_torchscript(self):
         """Load TorchScript model."""
-        # TorchScript models should be used on CPU for best compatibility
-        print(f"Loading TorchScript model from {self.model_path}")
-        self.model = torch.jit.load(str(self.model_path), map_location="cpu")
+        print(f"Loading TorchScript model from {self.model_path} on {self.device}")
+        self.model = torch.jit.load(str(self.model_path), map_location=self.device)
+        self.model = self.model.to(self.device)
         self.model.eval()
-        self.model_type = "torchscript"
-        self.device = "cpu"  # Force CPU for TorchScript
 
         # Check if model returns tuple or dict by running a test inference
-        dummy_input = torch.randn(1, 3, self.resolution, self.resolution)
+        dummy_input = torch.randn(1, 3, self.resolution, self.resolution, device=self.device)
         with torch.no_grad():
             test_output = self.model(dummy_input)
         self._returns_tuple = isinstance(test_output, tuple)
@@ -127,28 +111,19 @@ class RFDETRInference:
 
         # Transform
         transformed = self.transform(image=image_array)
-        image_tensor = transformed["image"]
+        image_tensor = transformed["image"].unsqueeze(0).to(self.device)
 
-        if self.model_type == "onnx":
-            image_tensor = image_tensor.numpy()
-            image_tensor = np.expand_dims(image_tensor, 0)
-            outputs = self.session.run(None, {"images": image_tensor})
-            pred_logits, pred_boxes = outputs[0], outputs[1]
-            pred_logits = pred_logits[0]
-            pred_boxes = pred_boxes[0]
-        else:  # torchscript
-            image_tensor = image_tensor.unsqueeze(0).to(self.device)
-            with torch.no_grad():
-                outputs = self.model(image_tensor)
+        with torch.no_grad():
+            outputs = self.model(image_tensor)
 
-            # Handle both tuple and dict outputs
-            if self._returns_tuple:
-                pred_logits, pred_boxes = outputs
-                pred_logits = pred_logits[0].cpu().numpy()
-                pred_boxes = pred_boxes[0].cpu().numpy()
-            else:
-                pred_logits = outputs["pred_logits"][0].cpu().numpy()
-                pred_boxes = outputs["pred_boxes"][0].cpu().numpy()
+        # Handle both tuple and dict outputs
+        if self._returns_tuple:
+            pred_logits, pred_boxes = outputs
+            pred_logits = pred_logits[0].cpu().numpy()
+            pred_boxes = pred_boxes[0].cpu().numpy()
+        else:
+            pred_logits = outputs["pred_logits"][0].cpu().numpy()
+            pred_boxes = outputs["pred_boxes"][0].cpu().numpy()
 
         # Process outputs
         pred_scores = self._sigmoid(pred_logits)
@@ -183,16 +158,12 @@ class RFDETRInference:
                 self.parent = parent
 
             def forward(self, x):
-                if self.parent.model_type == "onnx":
-                    outputs = self.parent.session.run(None, {"images": x.numpy()})
-                    return {"pred_logits": torch.from_numpy(outputs[0]), "pred_boxes": torch.from_numpy(outputs[1])}
-                else:
-                    with torch.no_grad():
-                        outputs = self.parent.model(x)
-                    # Convert tuple to dict for stitcher compatibility
-                    if self.parent._returns_tuple:
-                        return {"pred_logits": outputs[0], "pred_boxes": outputs[1]}
-                    return outputs
+                with torch.no_grad():
+                    outputs = self.parent.model(x)
+                # Convert tuple to dict for stitcher compatibility
+                if self.parent._returns_tuple:
+                    return {"pred_logits": outputs[0], "pred_boxes": outputs[1]}
+                return outputs
 
         transformed = self.transform(image=image)
         image_tensor = transformed["image"]
@@ -205,7 +176,7 @@ class RFDETRInference:
             batch_size=1,
             confidence_threshold=self.confidence_threshold,
             nms_threshold=self.nms_threshold,
-            device_name="cpu" if self.model_type == "onnx" else self.device,
+            device_name=self.device,
             voting_threshold=0.5,
         )
 
