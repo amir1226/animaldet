@@ -201,7 +201,7 @@ class RFDETRInference:
         stitcher = RFDETRStitcher(
             model=wrapper,
             size=(self.resolution, self.resolution),
-            overlap=160,
+            overlap=0,
             batch_size=1,
             confidence_threshold=self.confidence_threshold,
             nms_threshold=self.nms_threshold,
