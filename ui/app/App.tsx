@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { inferenceAPI, Detection, Metadata } from '@animaldet/shared/api/inference'
+import { inferenceService, Detection, Metadata, InferenceMode } from '@animaldet/shared/api/inference'
 
 function App() {
   const [image, setImage] = useState<string | null>(null)
   const [detections, setDetections] = useState<Detection[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [metadata, setMetadata] = useState<Metadata | null>(null)
+  const [inferenceMode, setInferenceMode] = useState<InferenceMode>('api')
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const imgRef = useRef<HTMLImageElement>(null)
 
@@ -27,13 +28,17 @@ function App() {
 
     setLoading(true)
     try {
-      const result = await inferenceAPI.runInferenceFromDataURL(image)
+      inferenceService.setMode(inferenceMode)
+      const result = await inferenceService.runInferenceFromDataURL(image)
       setDetections(result.data.detections)
       setMetadata(result.data.metadata)
       drawBoundingBoxes(result.data.detections)
     } catch (error) {
       console.error('Inference failed:', error)
-      alert('Failed to run inference. Make sure the API is running on port 8000.')
+      const errorMsg = inferenceMode === 'api'
+        ? 'Failed to run inference. Make sure the API is running on port 8000.'
+        : 'Failed to run ONNX inference. Make sure the model is loaded.'
+      alert(errorMsg)
     } finally {
       setLoading(false)
     }
@@ -121,7 +126,7 @@ function App() {
         <p className="text-gray-600">Animal Detection with AI</p>
       </header>
 
-      <div className="flex gap-3 mb-6">
+      <div className="flex gap-3 mb-6 items-center">
         <label
           htmlFor="file-upload"
           className="px-6 py-2 bg-black text-white rounded cursor-pointer hover:bg-gray-800"
@@ -145,6 +150,30 @@ function App() {
             {loading ? 'Detecting...' : 'Detect Animals'}
           </button>
         )}
+
+        <div className="ml-auto flex gap-2 items-center">
+          <span className="text-sm text-gray-600">Mode:</span>
+          <button
+            onClick={() => setInferenceMode('api')}
+            className={`px-4 py-1 text-sm rounded ${
+              inferenceMode === 'api'
+                ? 'bg-black text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            API
+          </button>
+          <button
+            onClick={() => setInferenceMode('onnx')}
+            className={`px-4 py-1 text-sm rounded ${
+              inferenceMode === 'onnx'
+                ? 'bg-black text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            ONNX
+          </button>
+        </div>
       </div>
 
       {image && (

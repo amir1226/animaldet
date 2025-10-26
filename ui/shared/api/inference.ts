@@ -1,4 +1,5 @@
 import { httpClient } from '../http/client'
+import { onnxInferenceService } from '../services/onnx-inference'
 
 export interface BoundingBox {
   x: number
@@ -26,8 +27,24 @@ export interface InferenceResponse {
   }
 }
 
-export class InferenceAPI {
+export type InferenceMode = 'api' | 'onnx'
+
+export class InferenceService {
+  private mode: InferenceMode = 'api'
+
+  setMode(mode: InferenceMode) {
+    this.mode = mode
+  }
+
+  getMode(): InferenceMode {
+    return this.mode
+  }
+
   async runInference(imageBlob: Blob): Promise<InferenceResponse> {
+    if (this.mode === 'onnx') {
+      return await onnxInferenceService.runInference(imageBlob)
+    }
+
     return await httpClient.post<InferenceResponse>('/inference', imageBlob, {
       headers: {
         'Content-Type': 'application/octet-stream',
@@ -41,4 +58,4 @@ export class InferenceAPI {
   }
 }
 
-export const inferenceAPI = new InferenceAPI()
+export const inferenceService = new InferenceService()
