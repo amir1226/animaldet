@@ -14,9 +14,9 @@ experiment:
 
 # Model configuration (must match training config)
 model:
-  variant: base  # nano, small, medium, base, or large
+  variant: small  # nano, small, medium, base, or large
   num_classes: 6  # Number of animal classes (no background class for RF-DETR)
-  resolution: 560  # Model input resolution (patches will be 560x560)
+  resolution: 512  # Model input resolution
 
   # Encoder settings
   encoder: dinov2_windowed_small
@@ -34,8 +34,8 @@ model:
 
   # Architecture params
   projector_scale: ["P4"]
-  out_feature_indexes: [3, 6, 9, 12]
-  positional_encoding_size: 37
+  out_feature_indexes: [2, 5, 8, 11]
+  positional_encoding_size: null  # Use default from variant
   group_detr: 13
 
   # Training settings
@@ -84,12 +84,17 @@ data:
 inference:
   name: RFDETRInference  # Inference registry name
   device: cuda  # Device for inference ('cuda' or 'cpu')
-  checkpoint_path: ./output/rfdetr_hnp/checkpoint_epoch_49.pth # Path to trained model checkpoint
-  threshold: 0.3  # Detection confidence threshold (0.0-1.0)
+  checkpoint_path: ./outputs/rfdetr/checkpoint_512_small_19_phase2.pth # Path to trained model checkpoint
+  threshold: 0.25  # Detection confidence threshold (0.0-1.0)
   batch_size: 4  # Batch size for patch inference (higher = faster but more memory)
   output_path: ./outputs/inference  # Output directory for inference results
-  detections_csv: rfdetr_detections.csv  # Output filename for detections
-  results_csv: rfdetr_scores.csv  # Output filename for metrics/results
+  detections_csv: rfdetr_detections_phase2.csv  # Output filename for detections
+  results_csv: rfdetr_scores_phase2.csv  # Output filename for metrics/results
+
+# Evaluator configuration
+evaluator:
+  nms_threshold: 0.9  # Very high to avoid suppressing naturally overlapping animals (voting handles duplicates)
+  metrics_radius: 20.0
 
 # Seed for reproducibility
 seed: 9292

@@ -73,8 +73,6 @@ cover/
 # Django stuff:
 *.log
 local_settings.py
-db.sqlite3
-db.sqlite3-journal
 
 # Flask stuff:
 instance/
@@ -193,9 +191,9 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-# Model file
+# Models file
 notebooks/best_resnet_model.pth
-
+**/*.onnx
 # Node applications
 **node_modules**
 

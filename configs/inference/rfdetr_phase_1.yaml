@@ -84,12 +84,12 @@ data:
 inference:
   name: RFDETRInference  # Inference registry name
   device: cuda  # Device for inference ('cuda' or 'cpu')
-  checkpoint_path: ./outputs/rfdetr/checkpoint_512_small_19_phase2.pth # Path to trained model checkpoint
+  checkpoint_path: ./outputs/rfdetr/checkpoint_small_epoch_27.pth # Path to trained model checkpoint
   threshold: 0.25  # Detection confidence threshold (0.0-1.0)
   batch_size: 4  # Batch size for patch inference (higher = faster but more memory)
   output_path: ./outputs/inference  # Output directory for inference results
-  detections_csv: rfdetr_detections_phase2.csv  # Output filename for detections
-  results_csv: rfdetr_scores_phase2.csv  # Output filename for metrics/results
+  detections_csv: rfdetr_detections_phase1.csv  # Output filename for detections
+  results_csv: rfdetr_scores_phase1.csv  # Output filename for metrics/results
 
 # Evaluator configuration
 evaluator:

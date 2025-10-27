@@ -5,10 +5,11 @@ This script loads a PyTorch checkpoint and exports the model to ONNX format
 for efficient inference deployment.
 
 Usage:
-    uv run scripts/export_rfdetr_to_onnx.py <checkpoint_path> <output_path>
+    uv run scripts/export_rfdetr_to_onnx.py <checkpoint_path> <output_path> [--web]
 """
 
 import sys
+import argparse
 import torch
 import torch.nn.functional as F
 from pathlib import Path
@@ -95,8 +96,14 @@ def load_checkpoint_info(checkpoint_path: str):
     }
 
 
-def export_to_onnx(checkpoint_path: str, output_path: str):
-    """Export RF-DETR model to ONNX format."""
+def export_to_onnx(checkpoint_path: str, output_path: str, web: bool = False):
+    """Export RF-DETR model to ONNX format.
+
+    Args:
+        checkpoint_path: Path to the model checkpoint
+        output_path: Path to save the ONNX model
+        web: If True, optimize for web deployment (fixed batch size, no dynamic axes)
+    """
     # Patch LayerNorm before importing/building model
     patch_layernorm_for_onnx()
 
@@ -154,26 +161,42 @@ def export_to_onnx(checkpoint_path: str, output_path: str):
     dummy_input = torch.randn(1, 3, info["resolution"], info["resolution"], device=device)
 
     # Export to ONNX
-    print(f"Exporting to ONNX...")
+    export_mode = "web-optimized" if web else "standard"
+    print(f"Exporting to ONNX ({export_mode})...")
+
     # Patch F.interpolate to remove antialias parameter during export
     F.interpolate = _onnx_safe_interpolate
     try:
         with torch.no_grad():
-            torch.onnx.export(
-                export_model,
-                dummy_input,
-                output_path,
-                export_params=True,
-                opset_version=17,
-                do_constant_folding=True,
-                input_names=["images"],
-                output_names=["pred_logits", "pred_boxes"],
-                dynamic_axes={
-                    "images": {0: "batch_size"},
-                    "pred_logits": {0: "batch_size"},
-                    "pred_boxes": {0: "batch_size"}
-                }
-            )
+            # For web deployment, use fixed batch size (no dynamic axes)
+            # For standard deployment, allow dynamic batch size
+            if web:
+                torch.onnx.export(
+                    export_model,
+                    dummy_input,
+                    output_path,
+                    export_params=True,
+                    opset_version=21,
+                    do_constant_folding=True,
+                    input_names=["images"],
+                    output_names=["pred_logits", "pred_boxes"],
+                )
+            else:
+                torch.onnx.export(
+                    export_model,
+                    dummy_input,
+                    output_path,
+                    export_params=True,
+                    opset_version=21,
+                    do_constant_folding=True,
+                    input_names=["images"],
+                    output_names=["pred_logits", "pred_boxes"],
+                    dynamic_axes={
+                        "images": {0: "batch_size"},
+                        "pred_logits": {0: "batch_size"},
+                        "pred_boxes": {0: "batch_size"}
+                    }
+                )
     finally:
         # Restore original interpolate function
         F.interpolate = _original_interpolate
@@ -186,11 +209,18 @@ def export_to_onnx(checkpoint_path: str, output_path: str):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print("Usage: uv run scripts/export_rfdetr_to_onnx.py <checkpoint> <output.onnx>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(
+        description="Export RF-DETR checkpoint to ONNX format",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument("checkpoint", type=str, help="Path to model checkpoint")
+    parser.add_argument("output", type=str, help="Path to save ONNX model")
+    parser.add_argument(
+        "--web",
+        action="store_true",
+        help="Optimize for web deployment (fixed batch size, suitable for ONNX Runtime Web)",
+    )
 
-    checkpoint_path = sys.argv[1]
-    output_path = sys.argv[2]
+    args = parser.parse_args()
 
-    export_to_onnx(checkpoint_path, output_path)
+    export_to_onnx(args.checkpoint, args.output, web=args.web)

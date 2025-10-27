@@ -16,7 +16,6 @@ dependencies = [
     "python-multipart>=0.0.20",
     "rfdetr",
     "seaborn>=0.13.2",
-    "sqlalchemy>=2.0.0",
     "tensorboard>=2.20.0",
     "torch>=2.8.0",
     "uvicorn>=0.38.0",
