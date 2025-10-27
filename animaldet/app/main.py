@@ -7,7 +7,9 @@ from typing import List, Optional
 
 import numpy as np
 from fastapi import FastAPI, File, HTTPException, UploadFile, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from PIL import Image
 from pydantic import BaseModel
 
@@ -176,6 +178,28 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, specify exact origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Mount static file directories
+# Get project root (assuming this file is in animaldet/app/main.py)
+project_root = Path(__file__).parent.parent.parent
+
+data_dir = project_root / "data"
+outputs_dir = project_root / "outputs"
+
+# Mount directories if they exist
+if data_dir.exists():
+    app.mount("/data", StaticFiles(directory=str(data_dir)), name="data")
+if outputs_dir.exists():
+    app.mount("/outputs", StaticFiles(directory=str(outputs_dir)), name="outputs")
+
 
 @app.post("/api/initialize")
 async def initialize_model(
@@ -259,6 +283,8 @@ async def root():
             "initialize": "POST /api/initialize - Initialize model",
             "inference": "POST /api/inference - Run inference",
             "health": "GET /health - Health check",
+            "data": "GET /data/* - Static files from data directory",
+            "outputs": "GET /outputs/* - Static files from outputs directory",
         },
     }
 
