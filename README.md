@@ -1,137 +1,158 @@
 # Animal Detection & Classification
 
-Proyecto de detección y clasificación de especies de fauna africana en imágenes aéreas UAV, basado en el dataset de [Delplanque et al. (2022)](https://zslpublications.onlinelibrary.wiley.com/doi/10.1002/rse2.234).
+Detection and classification project for African wildlife species in aerial UAV images, based on the [Delplanque et al. (2022)](https://zslpublications.onlinelibrary.wiley.com/doi/10.1002/rse2.234) dataset.
 
-## 📋 Descripción
+## 📋 Description
 
-Este proyecto implementa y evalúa modelos de deep learning para la detección automática y clasificación de mamíferos africanos en imágenes aéreas de alta resolución capturadas por UAVs (drones). El objetivo es desarrollar una solución robusta que pueda asistir en tareas de monitoreo de fauna silvestre en áreas protegidas.
+This project implements and evaluates deep learning models for automatic detection and classification of African mammals in high-resolution aerial images captured by UAVs (drones). The goal is to develop a robust solution that can assist in wildlife monitoring tasks in protected areas.
 
-### Dataset y Objetivo
+### Dataset and Objective
 
-El dataset proviene de vuelos UAV en el Parque Nacional Virunga (RDC) y reservas de Botsuana, Namibia y Sudáfrica, capturando 6 especies en entornos de bosque tropical, sabana y pastizales:
+The dataset comes from UAV flights in Virunga National Park (DRC) and reserves in Botswana, Namibia, and South Africa, capturing 6 species in tropical forest, savanna, and grassland environments:
 
-| Especie | Individuos (Train/Val/Test) | Dificultad |
+| Species | Individuals (Train/Val/Test) | Difficulty |
 |---------|----------------------------|------------|
-| **Elephant** | 2012 / 264 / 688 | Media (variabilidad de sombras) |
-| **Topi** | 1678 / 369 / 675 | Media (grupos densos) |
-| **Kob** | 1732 / 161 / 477 | Baja |
-| **Buffalo** | 1058 / 102 / 349 | Media (oclusiones) |
-| **Warthog** | 316 / 43 / 74 | Alta (tamaño pequeño, <100 ejemplos) |
-| **Waterbuck** | 166 / 39 / 36 | Alta (desbalance severo) |
+| **Elephant** | 2012 / 264 / 688 | Medium (shadow variability) |
+| **Topi** | 1678 / 369 / 675 | Medium (dense groups) |
+| **Kob** | 1732 / 161 / 477 | Low |
+| **Buffalo** | 1058 / 102 / 349 | Medium (occlusions) |
+| **Warthog** | 316 / 43 / 74 | High (small size, <100 examples) |
+| **Waterbuck** | 166 / 39 / 36 | High (severe imbalance) |
 | **Total** | 6,962 / 978 / 2,299 | — |
 
-**Métricas objetivo (baseline HerdNet):**
+**Target metrics (HerdNet baseline):**
 - F1 Score: **83.5%**
 - MAE: 1.9
 - RMSE: 3.6
 - Accuracy: 92.2%
 
-## 🏗️ Estructura del Proyecto
+## 🏗️ Project Structure
 
 ```
 animaldet/
-├── animaldet/                    # Paquete principal de Python
-│   ├── app/                      # API FastAPI (en desarrollo)
-│   ├── data/                     # Módulos de procesamiento de datos
-│   │   └── transformers/         # Transformaciones personalizadas
-│   ├── inference/                # Módulos de inferencia
-│   ├── models/                   # Definiciones de arquitecturas
-│   ├── preprocessing/            # Preprocesamiento de imágenes
-│   ├── train/                    # Scripts de entrenamiento
-│   └── utils/                    # Utilidades compartidas
+├── animaldet/                    # Main Python package
+│   ├── app/                      # FastAPI API (under development)
+│   ├── data/                     # Data processing modules
+│   │   └── transformers/         # Custom transformations
+│   ├── inference/                # Inference modules
+│   ├── models/                   # Architecture definitions
+│   ├── preprocessing/            # Image preprocessing
+│   ├── train/                    # Training scripts
+│   └── utils/                    # Shared utilities
 │
-├── experiments/                  # Experimentos y reproducción de papers
-│   ├── HerdNet/                  # Reproducción de HerdNet (Delplanque et al.)
-│   │   ├── experiment_1/         # Entrenamiento 2-etapas clásico
+├── experiments/                  # Experiments and paper reproductions
+│   ├── HerdNet/                  # HerdNet reproduction (Delplanque et al.)
+│   │   ├── experiment_1/         # Classic 2-stage training
 │   │   │   ├── scripts/
 │   │   │   │   ├── train_stage1.py           # Stage 1: Positive patches
 │   │   │   │   ├── train_stage2.py           # Stage 2: Hard Negative Patches
-│   │   │   │   ├── generate_hnps.py          # Generación HNPs
+│   │   │   │   ├── generate_hnps.py          # HNPs generation
 │   │   │   │   └── predict_evaluate_full_image.py
 │   │   │   └── README.md
-│   │   ├── experiment_2/         # Variante con mejoras
+│   │   ├── experiment_2/         # Variant with improvements
 │   │   │   ├── scripts/
 │   │   │   │   ├── 1_train.py
 │   │   │   │   ├── 2_inference_for_hard_negatives.py
 │   │   │   │   ├── 3_train_over_hnp.py
 │   │   │   │   └── 4_eval_test_scores.py
 │   │   │   └── README.md
-│   │   └── results/              # Resultados, métricas y visualizaciones
+│   │   └── results/              # Results, metrics and visualizations
 │   │       ├── detections.csv
 │   │       ├── infer-and-eval.ipynb
 │   │       └── train/
-│   │           ├── train_graphics.ipynb      # Gráficas de entrenamiento
+│   │           ├── train_graphics.ipynb      # Training plots
 │   │           ├── wandb_train_loss_*.csv
 │   │           └── wandb_f1_score_*.csv
 │   │
-│   └── RF-DETR/                  # Reproducción de RF-DETR (Roboflow)
-│       ├── experiment_1/         # Baseline DETR + refinamiento
+│   └── RF-DETR/                  # RF-DETR reproduction (Roboflow)
+│       ├── experiment_1/         # DETR baseline + refinement
 │       │   └── scripts/
 │       │       ├── 1_train.py
 │       │       ├── 2_eval_full_size.py
 │       │       ├── 4_inference.py
 │       │       └── 5_confidence_vs_f1.py
-│       ├── results/              # Resultados RF-DETR
+│       ├── results/              # RF-DETR results
 │       │   ├── detections.csv
 │       │   └── evaluation.ipynb
 │       ├── simple_coco_patcher.py
 │       └── README.md
 │
-├── infra/                        # Infraestructura y deployment (WIP)
-│   ├── ansible/                  # Automatización de configuración
-│   ├── kubernetes/               # Manifiestos K8s
-│   └── scripts/                  # Scripts de deployment
+├── infra/                        # Infrastructure and deployment (WIP)
+│   ├── ansible/                  # Configuration automation
+│   ├── kubernetes/               # K8s manifests
+│   └── scripts/                  # Deployment scripts
 │
-├── ui/                           # Frontend web (planificado)
+├── ui/                           # Web frontend (planned)
 │
-├── pyproject.toml                # Configuración del proyecto (uv)
-├── uv.lock                       # Lockfile de dependencias
-└── README.md                     # Este archivo
+├── pyproject.toml                # Project configuration (uv)
+├── uv.lock                       # Dependency lockfile
+└── README.md                     # This file
 ```
 
-### Ambientes de Desarrollo
+## 🔧 Installation and Setup
 
-El proyecto utiliza **dependency groups** de uv para gestionar diferentes entornos según el modelo/framework:
+### Prerequisites
+- Python >= 3.12
+- [uv](https://github.com/astral-sh/uv) (fast package manager)
+- CUDA 11.8+ (for GPU training)
 
-#### 1. HerdNet Environment
-Para experimentos con HerdNet (PyTorch + AnimalOC):
+### Installation
 
 ```bash
-# Instalar dependencias de HerdNet
+# Clone the repository
+git clone <repository-url>
+cd animaldet
+
+# Install uv (if you don't have it)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Create environment and install base dependencies
+uv sync
+```
+
+### Development Environments
+
+The project uses uv **dependency groups** to manage different environments based on the model/framework:
+
+#### 1. HerdNet Environment
+For HerdNet experiments (PyTorch + AnimalOC):
+
+```bash
+# Install HerdNet dependencies
 uv sync --group herdnet
 
-# Activar entorno
+# Activate environment
 source .venv/bin/activate
 ```
 
-Dependencias incluidas:
-- `animaloc`: Librería oficial de HerdNet
+Included dependencies:
+- `animaloc`: Official HerdNet library
 - PyTorch, torchvision
 - OpenCV, albumentations
 - wandb (tracking)
 
 #### 2. RF-DETR Environment
-Para experimentos con RF-DETR (DETR + Roboflow):
+For RF-DETR experiments (DETR + Roboflow):
 
 ```bash
-# Instalar dependencias de RF-DETR
+# Install RF-DETR dependencies
 uv sync --group rfdetr
 
-# Activar entorno
+# Activate environment
 source .venv/bin/activate
 ```
 
-Dependencias incluidas:
-- `rfdetr`: Implementación oficial
+Included dependencies:
+- `rfdetr`: Official implementation
 - Transformers (Hugging Face)
 - PyTorch, supervision
 - roboflow SDK
 
-#### 3. Ambientes Futuros (Planificados)
+#### 3. Future Environments (Planned)
 
 ```toml
 [dependency-groups]
-# Producción - API y serving
+# Production - API and serving
 deploy = [
     "fastapi",
     "uvicorn",
@@ -144,26 +165,25 @@ ui = [
     "node",  # Via system
 ]
 
-# Infraestructura
+# Infrastructure
 infra = [
     "ansible",
     "terraform",
 ]
 ```
 
-## 📄 Licencia
+## 📄 License
 
-Este proyecto utiliza código de:
+This project uses code from:
 - **HerdNet/AnimalOC**: MIT License (Alexandre Delplanque)
 - **RF-DETR**: Apache 2.0 License (Roboflow)
 
+## 👥 Contact
 
-## 👥 Contacto
-
-Para preguntas sobre el proyecto o colaboraciones, por favor abre un issue en GitHub.
+For questions about the project or collaborations, please open an issue on GitHub.
 
 ---
 
-**Last Updated:** 2025-10-29  
-**Status:** 🟡 En desarrollo activo (experimentos HerdNet completados, RF-DETR en progreso)
+**Last Updated:** 2025-10-27
+**Status:** 🟡 Actively in development (HerdNet experiments completed, RF-DETR in progress)
 
