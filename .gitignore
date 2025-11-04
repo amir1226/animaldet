@@ -204,3 +204,5 @@ mlruns/
 
 # ui
 ui/.vite
+# data
+data-delplanque/
