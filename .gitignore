@@ -204,5 +204,7 @@ mlruns/
 
 # ui
 ui/.vite
-# data
+
+# Datasets
 data-delplanque/
+general_dataset/
