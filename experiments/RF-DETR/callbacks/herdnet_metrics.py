@@ -117,12 +117,12 @@ class HerdNetMetricsCallback:
         """
         epoch = log_stats.get('epoch', 0)
         
-        # Only evaluate every N epochs
-        if (epoch + 1) % self.eval_every_n_epochs != 0:
+        # Evaluate at epoch 0 and then every N epochs (0, N, 2N, 3N, ...)
+        if epoch % self.eval_every_n_epochs != 0:
             return
         
         print(f"\n{'='*70}")
-        print(f"[HerdNet Metrics] Evaluating at epoch {epoch + 1}...")
+        print(f"[HerdNet Metrics] Evaluating at epoch {epoch}...")
         print(f"{'='*70}")
         
         # Flush previous metrics
