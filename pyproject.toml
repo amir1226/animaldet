@@ -6,6 +6,13 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "torch>=2.9.0",
+    "ipykernel>=7.1.0",
+    "pip>=25.3",
+    "animaloc",
+    "rfdetr",
+    "omegaconf>=2.3.0",
+    "albumentations>=2.0.8",
+    "wandb>=0.22.3",
 ]
 
 [dependency-groups]
