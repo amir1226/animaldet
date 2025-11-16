@@ -5,6 +5,7 @@ resource "aws_lb" "main" {
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
   subnets            = aws_subnet.public[*].id
+  idle_timeout       = 300  # 5 minutes for long-running inference requests
 
   tags = {
     Name        = "${var.app_name}-alb"
@@ -28,9 +29,11 @@ resource "aws_lb_target_group" "app" {
     path                = "/health"
     port                = "traffic-port"
     protocol            = "HTTP"
-    timeout             = 5
+    timeout             = 10
     unhealthy_threshold = 3
   }
+
+  deregistration_delay = 60
 
   tags = {
     Name        = "${var.app_name}-tg"

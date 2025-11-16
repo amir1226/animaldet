@@ -29,8 +29,8 @@ resource "aws_ecs_task_definition" "app" {
   family                   = var.app_name
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "2048"
-  memory                   = "4096"
+  cpu                      = "4096"  # Increased from 2048 for better inference performance
+  memory                   = "8192"  # Increased from 4096 for better inference performance
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   task_role_arn            = aws_iam_role.ecs_task_role.arn
 
