@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { ExperimentDetection } from '@animaldet/shared/api/experiments'
+import { getClassName } from '@animaldet/shared/utils/classNames'
 
 interface BoundingBoxCanvasProps {
   imageUrl: string
@@ -55,7 +56,7 @@ export default function BoundingBoxCanvas({
         ctx.strokeRect(x, y, width, height)
 
         // Draw label
-        const label = `${det.label} ${(det.score * 100).toFixed(0)}%`
+        const label = getClassName(det.label)
         ctx.font = 'bold 11px sans-serif'
         const textMetrics = ctx.measureText(label)
         const textWidth = textMetrics.width
