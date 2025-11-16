@@ -1,1 +1,2 @@
 experiments/HerdNet/experiment_2/notebooks/detections.csv filter=lfs diff=lfs merge=lfs -text
+modelos/* filter=lfs diff=lfs merge=lfs -text

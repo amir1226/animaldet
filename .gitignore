@@ -198,3 +198,9 @@ notebooks/best_resnet_model.pth
 
 # MLFlow
 mlruns/
+
+# Infra
+**lock.hcl
+
+# ui
+ui/.vite
