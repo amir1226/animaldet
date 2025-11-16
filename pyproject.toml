@@ -4,9 +4,14 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "pillow>=12.0.0",
+]
 
 [dependency-groups]
+dev = [
+    "torch>=2.9.0",
+]
 herdnet = [
     "animaloc",
 ]
