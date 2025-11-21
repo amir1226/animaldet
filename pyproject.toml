@@ -6,20 +6,23 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "torch>=2.9.0",
+    "albumentations>=1.4.0",
+    "numpy>=1.24.0",
+    "pillow>=10.0.0",
+    "tqdm>=4.65.0",
 ]
 
 [dependency-groups]
-dev = [
-    "torch>=2.9.0",
-]
 herdnet = [
     "animaloc",
+    "pandas>=2.0.0",
+    "ipykernel>=6.29.0",
 ]
 rfdetr = [
     "rfdetr",
-]
-viz = [
-    "fiftyone>=1.10.0",
+    "omegaconf>=2.3.0",
+    "pandas>=2.0.0",
+    "ipykernel>=6.29.0",
 ]
 
 [tool.uv.sources]
