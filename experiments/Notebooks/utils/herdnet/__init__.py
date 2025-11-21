@@ -11,6 +11,7 @@ from .train import (
     train_stage1,
     train_stage2,
 )
+from .patcher import patch_images
 
 __all__ = [
     # Training
@@ -32,4 +33,6 @@ __all__ = [
     # Metrics
     "evaluate_points_from_csv",
     "load_class_map",
+    #Patcher
+    "patch_images",
 ]
