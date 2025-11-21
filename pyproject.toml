@@ -16,11 +16,13 @@ dependencies = [
 herdnet = [
     "animaloc",
     "pandas>=2.0.0",
+    "ipykernel>=6.29.0",
 ]
 rfdetr = [
     "rfdetr",
     "omegaconf>=2.3.0",
     "pandas>=2.0.0",
+    "ipykernel>=6.29.0",
 ]
 
 [tool.uv.sources]
