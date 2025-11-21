@@ -198,3 +198,6 @@ notebooks/best_resnet_model.pth
 
 # MLFlow
 mlruns/
+# Datasets
+data-delplanque/
+general_dataset/
