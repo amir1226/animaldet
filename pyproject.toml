@@ -4,9 +4,7 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = [
-    "torch>=2.9.0",
-]
+dependencies = []
 
 [dependency-groups]
 herdnet = [
@@ -14,9 +12,6 @@ herdnet = [
 ]
 rfdetr = [
     "rfdetr",
-]
-viz = [
-    "fiftyone>=1.10.0",
 ]
 
 [tool.uv.sources]
