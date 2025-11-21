@@ -9,6 +9,9 @@ dependencies = [
 ]
 
 [dependency-groups]
+dev = [
+    "torch>=2.9.0",
+]
 herdnet = [
     "animaloc",
 ]

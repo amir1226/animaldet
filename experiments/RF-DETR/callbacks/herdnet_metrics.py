@@ -209,8 +209,8 @@ class HerdNetMetricsCallback:
                         cx = (box[0] + box[2]) / 2
                         cy = (box[1] + box[3]) / 2
                         pred_centers.append((cx, cy))
-                        # Note: RF-DETR class_id starts at 0, COCO at 1
-                        pred_labels.append(int(cls) + 1)
+                        # Note: Model already outputs labels 1-6 (no need to add 1)
+                        pred_labels.append(int(cls))
                         pred_scores.append(float(score))
                 
                 # Prepare dicts for metrics
