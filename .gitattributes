@@ -1,3 +1,4 @@
 experiments/HerdNet/experiment_2/notebooks/detections.csv filter=lfs diff=lfs merge=lfs -text
 modelos/* filter=lfs diff=lfs merge=lfs -text
 experiments/HerdNet/results/** filter=lfs diff=lfs merge=lfs -text
+modelos/rf-detr-small-animaldet.pth filter=lfs diff=lfs merge=lfs -text
