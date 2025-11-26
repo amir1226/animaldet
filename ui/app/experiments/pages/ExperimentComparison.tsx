@@ -20,10 +20,10 @@ const PREBUILT_EXPERIMENTS: PrebuiltExperiment[] = [
     description: 'RF-DETR model detections on phase 2 test set'
   },
   {
-    name: 'HerdNet Ground Truth',
+    name: 'Ground Truth',
     csvUrl: '/experiments/test_big_size_A_B_E_K_WH_WB.csv',
     imageBaseUrl: '/demo_images',
-    description: 'Ground truth annotations for HerdNet test set'
+    description: 'Ground truth annotations'
   }
 ]
 
