@@ -1,117 +1,124 @@
-# Dataset
+# Datos
 
 ## 📥 Descarga del Dataset
 
-El dataset utilizado en este proyecto es de acceso público y debe descargarse antes de ejecutar los notebooks de entrenamiento.
+El dataset utilizado en este proyecto es de acceso público. Hay **dos opciones** según tus necesidades:
 
-**Dataset:** Alexandre Delplanque et al. (2020) - African Wildlife Detection Dataset  
-**Fuente:** Université de Liège - Dataverse  
-**Link de descarga:** 🔗 https://dataverse.uliege.be/file.xhtml?fileId=11098&version=1.0
+### Opción 1: Dataset Procesado (Recomendado) ⭐
 
-### Instrucciones de descarga
+**Dataset con anotaciones ya convertidas a puntos centrales**  
+🔗 [Google Drive - data.zip](https://drive.google.com/file/d/1CcTAZZJdwrBfCPJtVH6VBU3luGKIN9st/view)
 
-1. **Descargar el archivo:**
-   - Visita el enlace anterior
-   - Descarga el archivo `general_dataset.zip` (12.3 GB)
+- ✅ Anotaciones CSV con puntos centrales (listas para usar)
+- ✅ Parches pre-generados para entrenamiento
+- ✅ No requiere preprocesamiento adicional
 
-2. **Extraer en la raíz del proyecto:**
-   ```bash
-   # Desde la raíz del proyecto
-   unzip general_dataset.zip
-   # Esto creará la carpeta general_dataset/
-   ```
-
-3. **Estructura esperada después de la descarga:**
-   ```
-   general_dataset/
-   ├── train/                       # Imágenes de entrenamiento (24 MP, 6000×4000)
-   ├── val/                         # Imágenes de validación (24 MP)
-   ├── test/                        # Imágenes de prueba (24 MP)
-   ├── train_subframes/             # Parches de entrenamiento pre-generados
-   └── groundtruth/                 # Anotaciones
-       ├── json/
-       │   ├── big_size/           # Anotaciones COCO para imágenes completas
-       │   │   ├── train_big_size_A_B_E_K_WH_WB.json
-       │   │   ├── val_big_size_A_B_E_K_WH_WB.json
-       │   │   └── test_big_size_A_B_E_K_WH_WB.json
-       │   └── sub_frames/         # Anotaciones COCO para parches
-       │       ├── train_subframes_A_B_E_K_WH_WB.json
-       │       ├── val_subframes_A_B_E_K_WH_WB.json
-       │       └── test_subframes_A_B_E_K_WH_WB.json
-       └── csv/                    # Anotaciones en formato CSV (puntos)
-           ├── train_big_size_A_B_E_K_WH_WB.csv
-           ├── val_big_size_A_B_E_K_WH_WB.csv
-           └── test_big_size_A_B_E_K_WH_WB.csv
-   ```
-   
-   **Nota:** `A_B_E_K_WH_WB` representa las iniciales de las 6 especies:
-   - **A**ntelope (Bushbuck)
-   - **B**ushbuck (Duiker)  
-   - **E**land
-   - **K**ob (Impala)
-   - **WH**arthog
-   - **WB**eest (Wildebeest)
-
-## 📊 Descripción del Dataset
-
-### Contenido
-- **Tipo:** Imágenes aéreas de herbívoros africanos
-- **Especies:** 6 clases
-  - Bushbuck
-  - Duiker
-  - Eland
-  - Impala
-  - Warthog
-  - Wildebeest
-- **Resolución:** 6000×4000 píxeles (24 MP)
-- **Formato:** JPEG
-
-### Estadísticas
-- **Entrenamiento:** ~928 imágenes
-- **Validación:** ~232 imágenes  
-- **Prueba:** ~258 imágenes
-
-### Formato de anotaciones original
-
-**COCO JSON con bounding boxes:**
-```json
-{
-  "images": [...],
-  "annotations": [
-    {
-      "id": 1,
-      "image_id": 1,
-      "category_id": 1,
-      "bbox": [x, y, width, height],  # Formato original: bounding boxes
-      "area": 12345,
-      "iscrowd": 0
-    }
-  ],
-  "categories": [...]
-}
+**Instrucciones:**
+```bash
+# Descargar desde Google Drive y extraer en la raíz del proyecto
+unzip data.zip
+# Esto creará la carpeta data-delplanque/
 ```
 
-## 🔄 Preprocesamiento aplicado
-
-Este proyecto convierte las anotaciones originales (bounding boxes) a **puntos centrales (centroides)** para el entrenamiento:
-
-### 1. Conversión bbox → punto central
-```python
-# De bounding box [x, y, w, h] a punto central
-center_x = x + w/2
-center_y = y + h/2
+**Estructura de `data-delplanque/`:**
+```
+data-delplanque/
+├── train/                    # Imágenes de entrenamiento (24 MP)
+├── train.csv                 # Puntos centrales de train
+├── train_patches/            # Parches de entrenamiento
+├── train_patches.csv         # Puntos centrales de parches
+├── val/                      # Imágenes de validación
+├── val.csv                   # Puntos centrales de val
+├── val_patches/              # Parches de validación
+├── test/                     # Imágenes de prueba
+└── test.csv                  # Puntos centrales de test
 ```
 
-### 2. Parchificación (Patching)
-- **Tamaño de parche:** Variable según modelo (ej. 560×560 px para RF-DETR Large)
-- **Solapamiento:** 160 píxeles (basado en el tamaño del individuo más grande)
-- **Ajuste de coordenadas:** Conversión de coordenadas globales a locales del parche
+### Opción 2: Dataset Original
 
-### 3. Entrenamiento en dos fases
-- **Fase 1:** Solo parches que contienen animales (ejemplos positivos)
-- **Fase 2:** Parches con animales + Hard Negative Patches (fondos confusos sin animales)
+**Dataset oficial de Alexandre Delplanque et al. (2020)**  
+🔗 [Dataverse - Université de Liège](https://dataverse.uliege.be/file.xhtml?fileId=11098&version=1.0)
 
-Ver detalles del pipeline completo en: `notebooks/data_preparation_flow.ipynb`
+- Anotaciones COCO JSON (bounding boxes)
+- Requiere conversión a puntos centrales
+
+**Instrucciones:**
+```bash
+# Descargar desde Dataverse y extraer en la raíz del proyecto
+unzip general_dataset.zip
+# Esto creará la carpeta general_dataset/
+```
+
+**Estructura de `general_dataset/`:**
+```
+general_dataset/
+├── train/                       # Imágenes de entrenamiento (24 MP)
+├── val/                         # Imágenes de validación
+├── test/                        # Imágenes de prueba
+├── train_subframes/             # Parches pre-generados
+└── groundtruth/                 # Anotaciones
+    ├── json/
+    │   ├── big_size/           # Anotaciones COCO (bboxes)
+    │   └── sub_frames/         # Anotaciones de parches
+    └── csv/                    # Puntos centrales
+```
+
+---
+
+## 📊 Resultados de Experimentación
+
+Esta carpeta también contiene los **resultados de inferencias** y **tiempos de ejecución** de los modelos evaluados.
+
+### `detections/`
+
+Predicciones de los modelos en el conjunto de prueba:
+
+**HerdNet:**
+- `herdnet_stage1_predictions.csv` - Predicciones Fase 1
+- `herdnet_stage2_detections.csv` - Predicciones Fase 2
+
+**RF-DETR Nano:**
+- `rfdetr_stage1_detections_points (nano).csv` - Fase 1
+- `rfdetr_stage2_detections_points (nano).csv` - Fase 2
+
+**RF-DETR Small:**
+- `rfdetr_stage1_detections (small).csv` - Fase 1
+- `rfdetr_stage2_detections (small).csv` - Fase 2
+
+**RF-DETR Large:**
+- `rfdetr_stage1_detections_points (large).csv` - Fase 1
+- `rfdetr_stage2_detections_points (large).csv` - Fase 2
+
+### `latency/`
+
+Tiempos de inferencia medidos en NVIDIA A100:
+
+- `inference_times_herdnet.csv`
+- `inference_times_rf_detr_nano.csv`
+- `inference_times_rf_detr_small.csv`
+- `inference_times_rf_detr_large.csv`
+
+### Formato de los CSV
+
+**CSV de detecciones:**
+```csv
+image_id,x,y,class_id,confidence
+test_001.jpg,1234.5,2345.6,1,0.95
+```
+
+**CSV de latencias:**
+```csv
+image_id,inference_time_ms
+test_001.jpg,193.45
+```
+
+### Notebooks que generan estos datos
+
+- **`Notebooks/detr_train.ipynb`** - Genera CSV de detecciones de RF-DETR (Nano, Small, Large) para ambas fases
+- **`Notebooks/herdnet_train.ipynb`** - Genera CSV de detecciones de HerdNet para ambas fases
+- **`Notebooks/inference_benchmark.ipynb`** - Consume detecciones, genera CSV de latencias, calcula métricas
+
+---
 
 ## 📚 Citación
 
@@ -129,3 +136,7 @@ Si utilizas este dataset en tu investigación, por favor cita:
   url = {https://dataverse.uliege.be/file.xhtml?fileId=11098}
 }
 ```
+
+---
+
+**⚠️ Nota:** Las carpetas `data-delplanque/` y `general_dataset/` están en `.gitignore` y se descargan localmente. Esta carpeta (`datos/`) contiene documentación e instrucciones de descarga, además de los CSV de resultados de experimentación.
