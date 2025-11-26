@@ -9,16 +9,14 @@ class ONNXStitcher:
 
     This class divides large images into patches at the model's expected resolution,
     runs inference on each patch, and rescales the bounding box predictions back to
-    the original image coordinates.
+    the original image coordinates. No overlap or NMS is applied (for E2E models).
 
     Args:
         onnx_session: ONNX runtime session
         input_name: Name of the input tensor
         output_names: Names of the output tensors
         size: Patch size (height, width), typically (512, 512)
-        overlap: Overlap between patches in pixels (default: 0)
         confidence_threshold: Minimum confidence score for detections (default: 0.5)
-        nms_threshold: IoU threshold for non-maximum suppression (default: 0.45)
     """
 
     def __init__(
@@ -27,17 +25,13 @@ class ONNXStitcher:
         input_name: str,
         output_names: List[str],
         size: Tuple[int, int] = (512, 512),
-        overlap: int = 0,
         confidence_threshold: float = 0.5,
-        nms_threshold: float = 0.45,
     ):
         self.session = onnx_session
         self.input_name = input_name
         self.output_names = output_names
         self.size = size
-        self.overlap = overlap
         self.confidence_threshold = confidence_threshold
-        self.nms_threshold = nms_threshold
 
     def __call__(self, image: np.ndarray) -> Dict[str, np.ndarray]:
         """Apply stitching algorithm to the image.
@@ -54,14 +48,12 @@ class ONNXStitcher:
         # Get image dimensions
         c, h, w = image.shape
 
-        # Calculate patch grid
+        # Calculate patch grid (no overlap)
         patch_h, patch_w = self.size
-        stride_h = patch_h - self.overlap
-        stride_w = patch_w - self.overlap
 
         # Calculate number of patches
-        n_patches_h = max(1, int(np.ceil((h - patch_h) / stride_h)) + 1)
-        n_patches_w = max(1, int(np.ceil((w - patch_w) / stride_w)) + 1)
+        n_patches_h = max(1, int(np.ceil(h / patch_h)))
+        n_patches_w = max(1, int(np.ceil(w / patch_w)))
 
         all_boxes = []
         all_scores = []
@@ -70,11 +62,11 @@ class ONNXStitcher:
         # Process each patch
         for i in range(n_patches_h):
             for j in range(n_patches_w):
-                # Calculate patch coordinates
-                y1 = min(i * stride_h, h - patch_h)
-                x1 = min(j * stride_w, w - patch_w)
-                y2 = y1 + patch_h
-                x2 = x1 + patch_w
+                # Calculate patch coordinates (no overlap)
+                y1 = i * patch_h
+                x1 = j * patch_w
+                y2 = min(y1 + patch_h, h)
+                x2 = min(x1 + patch_w, w)
 
                 # Extract patch
                 patch = image[:, y1:y2, x1:x2]
@@ -132,13 +124,11 @@ class ONNXStitcher:
         all_scores = np.concatenate(all_scores, axis=0)
         all_labels = np.concatenate(all_labels, axis=0)
 
-        # Apply NMS across all patches
-        keep_nms = self._nms(all_boxes, all_scores, self.nms_threshold)
-
+        # No NMS for E2E models
         return {
-            'boxes': all_boxes[keep_nms],
-            'scores': all_scores[keep_nms],
-            'labels': all_labels[keep_nms]
+            'boxes': all_boxes,
+            'scores': all_scores,
+            'labels': all_labels
         }
 
     @staticmethod
@@ -150,34 +140,3 @@ class ONNXStitcher:
         x1, y1 = cx - 0.5 * w, cy - 0.5 * h
         x2, y2 = cx + 0.5 * w, cy + 0.5 * h
         return np.stack([x1, y1, x2, y2], axis=-1)
-
-    @staticmethod
-    def _nms(boxes: np.ndarray, scores: np.ndarray, threshold: float) -> np.ndarray:
-        """Non-maximum suppression using numpy."""
-        if len(boxes) == 0:
-            return np.array([], dtype=np.int64)
-
-        x1, y1, x2, y2 = boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3]
-        areas = (x2 - x1) * (y2 - y1)
-        order = scores.argsort()[::-1]
-
-        keep = []
-        while order.size > 0:
-            i = order[0]
-            keep.append(i)
-
-            xx1 = np.maximum(x1[i], x1[order[1:]])
-            yy1 = np.maximum(y1[i], y1[order[1:]])
-            xx2 = np.minimum(x2[i], x2[order[1:]])
-            yy2 = np.minimum(y2[i], y2[order[1:]])
-
-            w = np.maximum(0.0, xx2 - xx1)
-            h = np.maximum(0.0, yy2 - yy1)
-            inter = w * h
-
-            iou = inter / (areas[i] + areas[order[1:]] - inter)
-
-            inds = np.where(iou <= threshold)[0]
-            order = order[inds + 1]
-
-        return np.array(keep, dtype=np.int64)

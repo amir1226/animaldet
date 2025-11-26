@@ -22,29 +22,24 @@ from PIL import Image
 class RFDETRONNXInference:
     """RF-DETR inference using ONNX Runtime.
 
-    Supports automatic stitching for images larger than model resolution.
-
     Args:
         model_path: Path to ONNX model file (.onnx)
         confidence_threshold: Minimum confidence score for detections
-        nms_threshold: IoU threshold for NMS
         resolution: Model input resolution (default: 512)
         providers: ONNX Runtime execution providers (default: ['CUDAExecutionProvider', 'CPUExecutionProvider'])
-        use_stitcher: Use stitcher for large images
+        use_stitcher: Use stitcher for large images (default: True)
     """
 
     def __init__(
         self,
         model_path: Union[str, Path],
         confidence_threshold: float = 0.5,
-        nms_threshold: float = 0.45,
         resolution: Optional[int] = None,
         providers: Optional[List[str]] = None,
         use_stitcher: bool = True,
     ):
         self.model_path = Path(model_path)
         self.confidence_threshold = confidence_threshold
-        self.nms_threshold = nms_threshold
         self.use_stitcher = use_stitcher
         self.resolution = resolution or 512
         self.providers = providers or ['CUDAExecutionProvider', 'CPUExecutionProvider']
@@ -148,9 +143,7 @@ class RFDETRONNXInference:
         boxes[:, [0, 2]] *= w / self.resolution
         boxes[:, [1, 3]] *= h / self.resolution
 
-        # Apply NMS
-        keep_nms = self._nms(boxes, scores, self.nms_threshold)
-        return {"boxes": boxes[keep_nms], "scores": scores[keep_nms], "labels": labels[keep_nms]}
+        return {"boxes": boxes, "scores": scores, "labels": labels}
 
     def _predict_with_stitcher(self, image: np.ndarray) -> Dict[str, np.ndarray]:
         """Run inference with stitching for large images using numpy-only implementation."""
@@ -163,15 +156,13 @@ class RFDETRONNXInference:
         # Convert HWC to CHW format
         image_array = np.transpose(image_normalized, (2, 0, 1))  # Shape: [C, H, W]
 
-        # Create stitcher
+        # Create stitcher (no overlap, no NMS since E2E model)
         stitcher = ONNXStitcher(
             onnx_session=self.session,
             input_name=self.input_name,
             output_names=self.output_names,
             size=(self.resolution, self.resolution),
-            overlap=0,
             confidence_threshold=self.confidence_threshold,
-            nms_threshold=self.nms_threshold,
         )
 
         # Run stitched inference
@@ -190,35 +181,6 @@ class RFDETRONNXInference:
         x1, y1 = cx - 0.5 * w, cy - 0.5 * h
         x2, y2 = cx + 0.5 * w, cy + 0.5 * h
         return np.stack([x1, y1, x2, y2], axis=-1)
-
-    @staticmethod
-    def _nms(boxes: np.ndarray, scores: np.ndarray, threshold: float) -> np.ndarray:
-        if len(boxes) == 0:
-            return np.array([], dtype=np.int64)
-
-        x1, y1, x2, y2 = boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3]
-        areas = (x2 - x1) * (y2 - y1)
-        order = scores.argsort()[::-1]
-
-        keep = []
-        while order.size > 0:
-            i = order[0]
-            keep.append(i)
-
-            xx1 = np.maximum(x1[i], x1[order[1:]])
-            yy1 = np.maximum(y1[i], y1[order[1:]])
-            xx2 = np.minimum(x2[i], x2[order[1:]])
-            yy2 = np.minimum(y2[i], y2[order[1:]])
-
-            w = np.maximum(0.0, xx2 - xx1)
-            h = np.maximum(0.0, yy2 - yy1)
-            inter = w * h
-
-            iou = inter / (areas[i] + areas[order[1:]] - inter)
-            inds = np.where(iou <= threshold)[0]
-            order = order[inds + 1]
-
-        return np.array(keep, dtype=np.int64)
 
 
 def predict_batch(

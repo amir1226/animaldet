@@ -75,9 +75,14 @@ def load_checkpoint_info(checkpoint_path: str):
                 variant = v
                 break
 
+    # Get actual num_classes from weights (more reliable than args)
+    # RF-DETR adds +1 internally, so we subtract 1 from the weight shape
+    state_dict = ckpt["ema_model"] if "ema_model" in ckpt and ckpt["ema_model"] else ckpt["model"]
+    actual_num_classes = state_dict["class_embed.weight"].shape[0] - 1
+
     return {
         "variant": variant,
-        "num_classes": args.num_classes,
+        "num_classes": actual_num_classes,
         "resolution": args.resolution,
         "encoder": args.encoder,
         "hidden_dim": args.hidden_dim,
@@ -92,7 +97,7 @@ def load_checkpoint_info(checkpoint_path: str):
         "projector_scale": args.projector_scale,
         "out_feature_indexes": args.out_feature_indexes,
         "positional_encoding_size": args.positional_encoding_size if hasattr(args, "positional_encoding_size") else None,
-        "state_dict": ckpt["ema_model"] if "ema_model" in ckpt and ckpt["ema_model"] else ckpt["model"],
+        "state_dict": state_dict,
     }
 
 
@@ -122,7 +127,8 @@ def export_to_onnx(checkpoint_path: str, output_path: str, web: bool = False):
     info = load_checkpoint_info(checkpoint_path)
 
     # Build model
-    print(f"Building {info['variant']} model...")
+    # num_classes is already the actual value from checkpoint weights
+    print(f"Building {info['variant']} model with num_classes={info['num_classes']}...")
     model_class = MODEL_VARIANTS[info["variant"]]
     wrapper = model_class(
         num_classes=info["num_classes"],
@@ -226,13 +232,53 @@ def export_to_onnx(checkpoint_path: str, output_path: str, web: bool = False):
 
 
 if __name__ == "__main__":
-    # Hardcoded paths for Docker build
-    checkpoint_path = Path(__file__).parent.parent / "modelos" / "rf-detr-small-animaldet.pth"
-    output_path = Path(__file__).parent.parent / "modelos" / "rf-detr-small-animaldet.onnx"
+    parser = argparse.ArgumentParser(description="Convert RF-DETR models to ONNX format")
+    parser.add_argument(
+        "--models",
+        nargs="+",
+        choices=["nano", "small", "all"],
+        default=["all"],
+        help="Which models to convert (default: all)",
+    )
+    parser.add_argument("--web", action="store_true", help="Optimize for web deployment")
+    args = parser.parse_args()
 
-    if not checkpoint_path.exists():
-        print(f"Error: Checkpoint not found at {checkpoint_path}")
-        sys.exit(1)
+    # Define model configurations
+    models_to_convert = {
+        "nano": "rf-detr-nano-animaldet.pth",
+        "small": "rf-detr-small-animaldet.pth",
+    }
 
-    export_to_onnx(str(checkpoint_path), str(output_path), web=False)
-    print("Model conversion completed!")
+    # Determine which models to convert
+    if "all" in args.models:
+        selected_models = list(models_to_convert.keys())
+    else:
+        selected_models = args.models
+
+    modelos_dir = Path(__file__).parent.parent / "modelos"
+    success_count = 0
+
+    for model_name in selected_models:
+        checkpoint_file = models_to_convert[model_name]
+        checkpoint_path = modelos_dir / checkpoint_file
+        output_path = modelos_dir / checkpoint_file.replace(".pth", ".onnx")
+
+        print(f"\n{'=' * 80}")
+        print(f"Converting {model_name.upper()} model")
+        print(f"{'=' * 80}")
+
+        if not checkpoint_path.exists():
+            print(f"Warning: Checkpoint not found at {checkpoint_path}, skipping...")
+            continue
+
+        try:
+            export_to_onnx(str(checkpoint_path), str(output_path), web=args.web)
+            success_count += 1
+        except Exception as e:
+            print(f"Error converting {model_name}: {str(e)}")
+            import traceback
+            traceback.print_exc()
+
+    print(f"\n{'=' * 80}")
+    print(f"Conversion completed: {success_count}/{len(selected_models)} models converted successfully")
+    print(f"{'=' * 80}")

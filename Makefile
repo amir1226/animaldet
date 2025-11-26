@@ -1,10 +1,16 @@
-.PHONY: build login push deploy terraform-apply all clean
+.PHONY: build login push deploy terraform-apply all clean convert-models
 
 IMAGE_NAME := animaldet
 IMAGE_TAG ?= latest
 AWS_REGION ?= us-east-1
 TERRAFORM_DIR := infra/aws
 ECR_REPOSITORY_URL ?= $(shell aws ecr describe-repositories --region $(AWS_REGION) --query 'repositories[?contains(repositoryName, `animaldet`)].repositoryUri' --output text 2>/dev/null | head -n1)
+
+# Convert PyTorch models to ONNX
+convert-models:
+	@echo "==> Converting models to ONNX..."
+	@python tools/convert_to_onnx.py --models all
+	@echo "==> Conversion complete"
 
 # Build Docker image
 build:

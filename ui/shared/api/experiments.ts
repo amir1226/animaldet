@@ -16,9 +16,38 @@ export interface ExperimentData {
 }
 
 export class ExperimentsService {
+  private convertGoogleDriveURL(url: string): string {
+    // Convert Google Drive sharing links to direct download links
+    const fileIdMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)
+    if (fileIdMatch) {
+      const fileId = fileIdMatch[1]
+      return `https://drive.usercontent.google.com/download?id=${fileId}&export=download&confirm=t`
+    }
+
+    // If already a direct download link, ensure it uses the correct domain
+    if (url.includes('drive.google.com/uc?')) {
+      const fileIdMatch2 = url.match(/id=([a-zA-Z0-9_-]+)/)
+      if (fileIdMatch2) {
+        const fileId = fileIdMatch2[1]
+        return `https://drive.usercontent.google.com/download?id=${fileId}&export=download&confirm=t`
+      }
+    }
+
+    return url
+  }
+
   async loadExperimentFromURL(url: string, name: string): Promise<ExperimentData> {
     try {
-      const response = await fetch(url)
+      // Convert Google Drive URLs to direct download format
+      const fetchUrl = this.convertGoogleDriveURL(url)
+
+      const response = await fetch(fetchUrl, {
+        method: 'GET',
+        mode: 'cors',
+        cache: 'no-cache',
+        credentials: 'omit'
+      })
+
       if (!response.ok) {
         throw new Error(`Failed to fetch CSV: ${response.statusText}`)
       }

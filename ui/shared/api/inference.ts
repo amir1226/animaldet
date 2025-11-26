@@ -26,18 +26,33 @@ export interface InferenceResponse {
   }
 }
 
+export interface InferenceOptions {
+  confidenceThreshold?: number
+  model?: 'nano' | 'small'
+}
+
 export class InferenceService {
-  async runInference(imageBlob: Blob): Promise<InferenceResponse> {
-    return await httpClient.post<InferenceResponse>('/inference', imageBlob, {
+  async runInference(imageBlob: Blob, options?: InferenceOptions): Promise<InferenceResponse> {
+    const params = new URLSearchParams()
+    if (options?.confidenceThreshold !== undefined) {
+      params.append('confidence_threshold', options.confidenceThreshold.toString())
+    }
+    if (options?.model) {
+      params.append('model', options.model)
+    }
+
+    const url = params.toString() ? `/inference?${params.toString()}` : '/inference'
+
+    return await httpClient.post<InferenceResponse>(url, imageBlob, {
       headers: {
         'Content-Type': 'application/octet-stream',
       },
     })
   }
 
-  async runInferenceFromDataURL(dataURL: string): Promise<InferenceResponse> {
+  async runInferenceFromDataURL(dataURL: string, options?: InferenceOptions): Promise<InferenceResponse> {
     const blob = await fetch(dataURL).then(r => r.blob())
-    return this.runInference(blob)
+    return this.runInference(blob, options)
   }
 }
 

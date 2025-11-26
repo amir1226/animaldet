@@ -68,6 +68,22 @@ resource "aws_ecs_task_definition" "app" {
         {
           name  = "PYTHONDONTWRITEBYTECODE"
           value = "1"
+        },
+        {
+          name  = "MODEL_PATH"
+          value = "model.onnx"
+        },
+        {
+          name  = "CONFIDENCE_THRESHOLD"
+          value = "0.5"
+        },
+        {
+          name  = "MODEL_RESOLUTION"
+          value = "512"
+        },
+        {
+          name  = "USE_STITCHER"
+          value = "true"
         }
       ]
 

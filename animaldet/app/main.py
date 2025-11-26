@@ -2,6 +2,7 @@
 
 import io
 import logging
+import os
 import time
 from pathlib import Path
 from typing import List, Optional
@@ -15,6 +16,7 @@ from PIL import Image
 from pydantic import BaseModel
 
 from animaldet.inference.rfdetr_onnx import RFDETRONNXInference
+from animaldet.inference.registry import MODELS
 from animaldet.app.class_names import get_class_name
 
 # Configure logging
@@ -65,17 +67,18 @@ class RFDETRService:
         self,
         model_path: str,
         confidence_threshold: float = 0.5,
-        nms_threshold: float = 0.45,
         resolution: int = 512,
         device: str = "cuda",
         use_stitcher: bool = True,
         runtime: str = "onnx",
+        class_offset: int = 0,
     ):
         self.model_path = model_path
         self.model_name = Path(model_path).stem
         self.confidence_threshold = confidence_threshold
         self.resolution = resolution
         self.runtime = runtime
+        self.class_offset = class_offset
 
         # Only ONNX runtime supported in production
         if runtime != "onnx":
@@ -84,16 +87,16 @@ class RFDETRService:
         self.model = RFDETRONNXInference(
             model_path=model_path,
             confidence_threshold=confidence_threshold,
-            nms_threshold=nms_threshold,
             resolution=resolution,
             use_stitcher=use_stitcher,
         )
 
-    def predict(self, image_bytes: bytes) -> dict:
+    def predict(self, image_bytes: bytes, confidence_threshold: Optional[float] = None) -> dict:
         """Run inference on image bytes.
 
         Args:
             image_bytes: Raw image bytes
+            confidence_threshold: Optional confidence threshold (overrides default)
 
         Returns:
             Dictionary with detections and metadata
@@ -111,12 +114,23 @@ class RFDETRService:
         img_h, img_w = image_np.shape[:2]
         logger.info(f"Image shape: {img_h}x{img_w}")
 
+        # Use provided confidence threshold or default
+        conf_thresh = confidence_threshold if confidence_threshold is not None else self.confidence_threshold
+        logger.info(f"Using confidence threshold: {conf_thresh}")
+
+        # Temporarily set confidence threshold for this inference
+        original_threshold = self.model.confidence_threshold
+        self.model.confidence_threshold = conf_thresh
+
         # Run inference
         start_time = time.time()
         logger.info("Starting model prediction...")
         detections = self.model.predict(image)
         latency_ms = (time.time() - start_time) * 1000
         logger.info(f"Model prediction completed in {latency_ms:.2f}ms")
+
+        # Restore original threshold
+        self.model.confidence_threshold = original_threshold
 
         # Convert detections to response format
         detection_list = []
@@ -132,10 +146,13 @@ class RFDETRService:
             w = float(x2 - x1)
             h = float(y2 - y1)
 
+            # Apply class offset to correct for model-specific class numbering
+            corrected_class_id = int(labels[i]) + self.class_offset
+
             detection_list.append(
                 Detection(
-                    class_id=int(labels[i]),
-                    class_name=get_class_name(int(labels[i])),
+                    class_id=corrected_class_id,
+                    class_name=get_class_name(corrected_class_id),
                     bbox=BoundingBox(
                         x=x,
                         y=y,
@@ -159,19 +176,53 @@ class RFDETRService:
         }
 
 
-# Global model instance
-_model_service: Optional[RFDETRService] = None
+# Global model instances (support multiple models)
+_model_services: dict[str, RFDETRService] = {}
+_current_model: Optional[str] = None
 
 
-def get_model_service() -> RFDETRService:
-    """Get or initialize the model service."""
-    global _model_service
-    if _model_service is None:
+def get_model_service(model_name: Optional[str] = None) -> RFDETRService:
+    """Get or load a model service on-demand.
+
+    Args:
+        model_name: Name of the model to use, or None for current/default model
+    """
+    global _current_model
+
+    # Use current model if no specific model requested
+    if model_name is None:
+        model_name = _current_model
+
+    if model_name is None:
         raise HTTPException(
             status_code=500,
-            detail="Model not initialized. Call /initialize endpoint first.",
+            detail="No model initialized.",
         )
-    return _model_service
+
+    # Load model on-demand if not already loaded
+    if model_name not in _model_services:
+        try:
+            model_config = MODELS.get(model_name)
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+
+        # Get default settings from env
+        confidence_threshold = float(os.getenv("CONFIDENCE_THRESHOLD", "0.5"))
+        use_stitcher = os.getenv("USE_STITCHER", "true").lower() == "true"
+
+        service = RFDETRService(
+            model_path=model_config.model_path,
+            confidence_threshold=confidence_threshold,
+            resolution=model_config.resolution,
+            device="cpu",
+            use_stitcher=use_stitcher,
+            runtime="onnx",
+            class_offset=model_config.class_offset,
+        )
+        _model_services[model_name] = service
+        logger.info(f"Loaded model '{model_name}' on-demand")
+
+    return _model_services[model_name]
 
 
 # FastAPI app
@@ -191,76 +242,58 @@ app.add_middleware(
 )
 
 
-@app.post("/api/initialize")
-async def initialize_model(
-    model_path: str = "model.pt",
-    confidence_threshold: float = 0.5,
-    nms_threshold: float = 0.45,
-    resolution: int = 512,
-    device: str = "cuda",
-    use_stitcher: bool = True,
-    runtime: str = "torchscript",
-):
-    """Initialize the model service.
-
-    Args:
-        model_path: Path to model file (.pt for torchscript or .onnx for onnx)
-        confidence_threshold: Minimum confidence for detections
-        nms_threshold: IoU threshold for NMS
-        resolution: Model input resolution
-        device: Device for inference ('cuda' or 'cpu', only for torchscript)
-        use_stitcher: Use stitching for large images
-        runtime: Runtime to use ('torchscript' or 'onnx', default: 'torchscript')
-    """
-    global _model_service
-    try:
-        _model_service = RFDETRService(
-            model_path=model_path,
-            confidence_threshold=confidence_threshold,
-            nms_threshold=nms_threshold,
-            resolution=resolution,
-            device=device,
-            use_stitcher=use_stitcher,
-            runtime=runtime,
-        )
-        return {"status": "success", "message": f"Model loaded from {model_path} using {runtime} runtime"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to load model: {str(e)}")
+@app.get("/api/models")
+async def list_models():
+    """List all available models."""
+    models = MODELS.list_models()
+    default = MODELS.get_default()
+    return {
+        "models": models,
+        "default": default,
+        "loaded": list(_model_services.keys()),
+        "current": _current_model,
+    }
 
 
 # Initialize model on startup
 @app.on_event("startup")
 async def startup_event():
-    """Initialize the model service on startup."""
-    global _model_service
+    """Initialize the default model on startup."""
+    global _current_model
+
     try:
-        _model_service = RFDETRService(
-            model_path="model.onnx",
-            confidence_threshold=0.5,
-            nms_threshold=0.45,
-            resolution=512,
-            device="cpu",  # ONNX runtime handles device
-            use_stitcher=True,
-            runtime="onnx",
-        )
-        print("Model loaded successfully on startup using ONNX runtime")
+        # Get model name from env or use default (nano)
+        model_name = os.getenv("MODEL_NAME", MODELS.get_default())
+        _current_model = model_name
+
+        # Preload the default model
+        get_model_service(model_name)
+
+        print(f"✓ Model '{model_name}' loaded successfully on startup")
+        print(f"  Available models: {list(MODELS.list_models().keys())}")
     except Exception as e:
         print(f"Warning: Failed to load model on startup: {str(e)}")
-        print("You can initialize the model later using POST /api/initialize")
+        print("Models will be loaded on-demand when requested")
 
 
 @app.post("/api/inference", response_model=InferenceResponse)
-async def inference(request: Request):
+async def inference(
+    request: Request,
+    confidence_threshold: Optional[float] = None,
+    model: Optional[str] = None,
+):
     """Run inference on an image.
 
     Args:
         request: Raw image bytes in request body (application/octet-stream)
+        confidence_threshold: Optional confidence threshold (overrides default)
+        model: Optional model name to use ("nano" or "small", default: current model)
 
     Returns:
         Inference results with detections and metadata
     """
-    logger.info("Received inference request")
-    service = get_model_service()
+    logger.info(f"Received inference request (model={model or _current_model})")
+    service = get_model_service(model)
 
     try:
         # Read raw body bytes
@@ -276,7 +309,7 @@ async def inference(request: Request):
             raise HTTPException(status_code=400, detail="Image data too small, likely corrupted")
 
         logger.info("Running inference...")
-        result = service.predict(image_bytes)
+        result = service.predict(image_bytes, confidence_threshold=confidence_threshold)
         logger.info(f"Inference successful: {len(result['detections'])} detections found")
         return {"data": result}
     except HTTPException:

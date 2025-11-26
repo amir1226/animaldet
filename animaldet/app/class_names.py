@@ -1,13 +1,16 @@
 """Class name mappings for detection models."""
 
 # Animal classes for the RF-DETR model
+# Class 0 is background, classes 1-6 are animals
 CLASS_NAMES = {
+    0: "Background",  # Background class (should be filtered out)
     1: "Topi",
     2: "Buffalo",
     3: "Kob",
     4: "Warthog",
     5: "Waterbuck",
     6: "Elephant",
+    7: "Elephant",  # Temporary fix for nano model - maps to Elephant
 }
 
 

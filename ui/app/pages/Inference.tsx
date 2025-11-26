@@ -1,11 +1,29 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { inferenceService, Detection, Metadata } from '@animaldet/shared/api/inference'
 
+interface ModelInfo {
+  name: string
+  model_path: string
+  resolution: number
+  num_classes: number
+  description: string
+}
+
+interface ModelsResponse {
+  models: Record<string, ModelInfo>
+  default: string
+  loaded: string[]
+  current: string
+}
+
 function Inference() {
   const [image, setImage] = useState<string | null>(null)
   const [detections, setDetections] = useState<Detection[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [metadata, setMetadata] = useState<Metadata | null>(null)
+  const [confidenceThreshold, setConfidenceThreshold] = useState(0.5)
+  const [selectedModel, setSelectedModel] = useState<'nano' | 'small'>('small')
+  const [availableModels, setAvailableModels] = useState<ModelsResponse | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const imgRef = useRef<HTMLImageElement>(null)
 
@@ -35,7 +53,10 @@ function Inference() {
 
     setLoading(true)
     try {
-      const result = await inferenceService.runInferenceFromDataURL(image)
+      const result = await inferenceService.runInferenceFromDataURL(image, {
+        confidenceThreshold,
+        model: selectedModel,
+      })
       setDetections(result.data.detections)
       setMetadata(result.data.metadata)
       drawBoundingBoxes(result.data.detections)
@@ -46,6 +67,21 @@ function Inference() {
       setLoading(false)
     }
   }
+
+  // Load available models on mount
+  useEffect(() => {
+    const fetchModels = async () => {
+      try {
+        const response = await fetch('/api/models')
+        const data: ModelsResponse = await response.json()
+        setAvailableModels(data)
+        setSelectedModel(data.default as 'nano' | 'small')
+      } catch (error) {
+        console.error('Failed to fetch models:', error)
+      }
+    }
+    fetchModels()
+  }, [])
 
   const drawBoundingBoxes = useCallback((detections: Detection[]) => {
     const canvas = canvasRef.current
@@ -153,7 +189,73 @@ function Inference() {
             {loading ? 'Detecting...' : 'Detect Animals'}
           </button>
         )}
+
+        <div className="flex items-center gap-6 ml-auto">
+          <div className="flex items-center gap-2">
+            <label htmlFor="model-select" className="text-sm text-gray-700 whitespace-nowrap">
+              Model:
+            </label>
+            <select
+              id="model-select"
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value as 'nano' | 'small')}
+              className="px-3 py-1 border border-gray-300 rounded text-sm"
+            >
+              {availableModels && Object.entries(availableModels.models).map(([key, model]) => (
+                <option key={key} value={key}>
+                  {key.toUpperCase()} ({model.resolution}x{model.resolution})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <label htmlFor="confidence-slider" className="text-sm text-gray-700 whitespace-nowrap">
+              Confidence: {(confidenceThreshold * 100).toFixed(0)}%
+            </label>
+            <input
+              id="confidence-slider"
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={confidenceThreshold}
+              onChange={(e) => setConfidenceThreshold(parseFloat(e.target.value))}
+              className="w-32"
+            />
+          </div>
+        </div>
       </div>
+
+      {/* Model info card - always visible when models are loaded */}
+      {availableModels && !image && (
+        <div className="border border-gray-300 p-6 bg-gray-50 mb-6">
+          <h2 className="text-lg font-semibold mb-4">Available Models</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {Object.entries(availableModels.models).map(([key, model]) => (
+              <div
+                key={key}
+                className={`p-4 border-2 rounded ${
+                  selectedModel === key ? 'border-black bg-white' : 'border-gray-300'
+                }`}
+              >
+                <div className="font-bold text-lg mb-1">{key.toUpperCase()}</div>
+                <div className="text-sm text-gray-600 mb-3">{model.description}</div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-gray-600">Resolution:</span>
+                    <div className="font-medium">{model.resolution}x{model.resolution}</div>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Classes:</span>
+                    <div className="font-medium">{model.num_classes}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {image && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -168,31 +270,54 @@ function Inference() {
             <canvas ref={canvasRef} className="absolute top-0 left-0 pointer-events-none" />
           </div>
 
-          {detections && (
-            <div className="flex flex-col gap-4">
-              <div className="border border-gray-300 p-4">
-                <div className="text-sm text-gray-600 mb-1">Detections</div>
-                <div className="text-2xl font-bold">{detections.length}</div>
-              </div>
-
-              <div className="border border-gray-300 p-4">
-                <div className="text-sm text-gray-600 mb-1">Latency</div>
-                <div className="text-2xl font-bold">{metadata ? (metadata.latency_ms / 1000).toFixed(2) : '0'}s</div>
-              </div>
-
-              <div className="border border-gray-300 p-4 max-h-96 overflow-y-auto">
-                <h3 className="text-sm font-semibold mb-3 text-gray-600">Results</h3>
-                {detections.map((det, idx) => (
-                  <div key={idx} className="flex justify-between items-center py-2 border-b border-gray-200 last:border-0">
-                    <span className="text-sm">{det.class_name}</span>
-                    <span className="text-sm font-mono text-amber-700">
-                      {(det.bbox.confidence * 100).toFixed(1)}%
-                    </span>
+          <div className="flex flex-col gap-4">
+            {/* Model Info */}
+            {availableModels && (
+              <div className="border border-gray-300 p-4 bg-gray-50">
+                <div className="text-sm font-semibold text-gray-700 mb-2">Active Model</div>
+                <div className="text-lg font-bold mb-1">{selectedModel.toUpperCase()}</div>
+                <div className="text-xs text-gray-600 mb-2">
+                  {availableModels.models[selectedModel]?.description}
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-gray-600">Resolution:</span>
+                    <div className="font-medium">{availableModels.models[selectedModel]?.resolution}x{availableModels.models[selectedModel]?.resolution}</div>
                   </div>
-                ))}
+                  <div>
+                    <span className="text-gray-600">Classes:</span>
+                    <div className="font-medium">{availableModels.models[selectedModel]?.num_classes}</div>
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+
+            {detections && (
+              <>
+                <div className="border border-gray-300 p-4">
+                  <div className="text-sm text-gray-600 mb-1">Detections</div>
+                  <div className="text-2xl font-bold">{detections.length}</div>
+                </div>
+
+                <div className="border border-gray-300 p-4">
+                  <div className="text-sm text-gray-600 mb-1">Latency</div>
+                  <div className="text-2xl font-bold">{metadata ? (metadata.latency_ms / 1000).toFixed(2) : '0'}s</div>
+                </div>
+
+                <div className="border border-gray-300 p-4 max-h-96 overflow-y-auto">
+                  <h3 className="text-sm font-semibold mb-3 text-gray-600">Results</h3>
+                  {detections.map((det, idx) => (
+                    <div key={idx} className="flex justify-between items-center py-2 border-b border-gray-200 last:border-0">
+                      <span className="text-sm">{det.class_name}</span>
+                      <span className="text-sm font-mono text-amber-700">
+                        {(det.bbox.confidence * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>

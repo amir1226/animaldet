@@ -27,12 +27,15 @@ RUN pip install --no-cache-dir \
     onnxscript \
     git+https://github.com/roboflow/rf-detr
 
-# Copy conversion script and model
+# Copy conversion script and models
 COPY tools/convert_to_onnx.py ./tools/convert_to_onnx.py
+COPY modelos/rf-detr-nano-animaldet.pth ./modelos/rf-detr-nano-animaldet.pth
 COPY modelos/rf-detr-small-animaldet.pth ./modelos/rf-detr-small-animaldet.pth
 
-# Convert PyTorch model to ONNX
-RUN python tools/convert_to_onnx.py
+# Convert PyTorch models to ONNX (both nano and small)
+RUN python tools/convert_to_onnx.py --models all && \
+    ls -lh modelos/*.onnx modelos/*.json && \
+    echo "✓ Model conversion completed successfully"
 
 # Production stage - lightweight runtime
 FROM python:3.12-slim
@@ -49,9 +52,11 @@ RUN apt-get update && apt-get install -y \
 # Copy application code
 COPY animaldet/ ./animaldet/
 
-# Copy converted ONNX model and metadata
-COPY --from=model-converter /app/modelos/rf-detr-small-animaldet.onnx ./model.onnx
-COPY --from=model-converter /app/modelos/rf-detr-small-animaldet.json ./model.json
+# Copy converted ONNX models and metadata (both nano and small)
+COPY --from=model-converter /app/modelos/rf-detr-nano-animaldet.onnx ./rf-detr-nano-animaldet.onnx
+COPY --from=model-converter /app/modelos/rf-detr-nano-animaldet.json ./rf-detr-nano-animaldet.json
+COPY --from=model-converter /app/modelos/rf-detr-small-animaldet.onnx ./rf-detr-small-animaldet.onnx
+COPY --from=model-converter /app/modelos/rf-detr-small-animaldet.json ./rf-detr-small-animaldet.json
 
 # Copy built frontend files
 COPY --from=frontend-builder /frontend/dist ./static
@@ -71,6 +76,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+ENV MODEL_NAME=small
 
 EXPOSE 8000
 
