@@ -52,21 +52,23 @@ RUN apt-get update && apt-get install -y \
 # Copy application code
 COPY animaldet/ ./animaldet/
 
-# Copy converted ONNX models and metadata (both nano and small)
-COPY --from=model-converter /app/modelos/rf-detr-nano-animaldet.onnx ./rf-detr-nano-animaldet.onnx
-COPY --from=model-converter /app/modelos/rf-detr-nano-animaldet.json ./rf-detr-nano-animaldet.json
-COPY --from=model-converter /app/modelos/rf-detr-small-animaldet.onnx ./rf-detr-small-animaldet.onnx
-COPY --from=model-converter /app/modelos/rf-detr-small-animaldet.json ./rf-detr-small-animaldet.json
-
 # Copy built frontend files
 COPY --from=frontend-builder /frontend/dist ./static
 
-# Copy experiment CSVs for demo
+# Copy experiment CSVs for demo and ground truth
 COPY experiments/RF-DETR/results/rfdetr_detections_phase2.csv ./static/experiments/rfdetr_detections_phase2.csv
 COPY experiments/HerdNet/results/test_big_size_A_B_E_K_WH_WB.csv ./static/experiments/test_big_size_A_B_E_K_WH_WB.csv
+COPY experiments/HerdNet/results/test_big_size_A_B_E_K_WH_WB.csv ./experiments/HerdNet/results/test_big_size_A_B_E_K_WH_WB.csv
 
-# Copy demo images (if available, otherwise comment out)
-COPY demo_images/*.JPG ./static/demo_images/
+# Copy demo images to app root (API endpoint looks for them here)
+COPY demo_images/ ./demo_images/
+
+# Create modelos directory and copy ONNX models there (matching registry paths)
+RUN mkdir -p modelos
+COPY --from=model-converter /app/modelos/rf-detr-nano-animaldet.onnx ./modelos/rf-detr-nano-animaldet.onnx
+COPY --from=model-converter /app/modelos/rf-detr-nano-animaldet.json ./modelos/rf-detr-nano-animaldet.json
+COPY --from=model-converter /app/modelos/rf-detr-small-animaldet.onnx ./modelos/rf-detr-small-animaldet.onnx
+COPY --from=model-converter /app/modelos/rf-detr-small-animaldet.json ./modelos/rf-detr-small-animaldet.json
 
 # Install minimal production dependencies
 COPY infra/requirements.txt .

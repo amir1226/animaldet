@@ -1,0 +1,12 @@
+{
+  "variant": "small",
+  "num_classes": 6,
+  "resolution": 512,
+  "input_names": [
+    "images"
+  ],
+  "output_names": [
+    "pred_logits",
+    "pred_boxes"
+  ]
+}

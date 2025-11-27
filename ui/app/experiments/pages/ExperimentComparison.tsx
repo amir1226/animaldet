@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/react'
 import { experimentsService, ExperimentData } from '@animaldet/shared/api/experiments'
-import ExperimentLoader from '../components/ExperimentLoader'
 import BoundingBoxCanvas from '../components/BoundingBoxCanvas'
 import ImageThumbnailList from '../components/ImageThumbnailList'
 
@@ -37,40 +36,6 @@ export default function ExperimentComparison() {
   const [showExp1, setShowExp1] = useState(true)
   const [showExp2, setShowExp2] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(true)
-
-  const handleLoadExperiment1 = async (url: string, name: string) => {
-    setLoading1(true)
-    try {
-      const data = await experimentsService.loadExperimentFromURL(url, name)
-      setExperiment1(data)
-
-      // Auto-select first image if available
-      if (data.images.length > 0 && !selectedImage) {
-        setSelectedImage(data.images[0])
-      }
-    } catch (error) {
-      alert(`Failed to load experiment: ${error}`)
-    } finally {
-      setLoading1(false)
-    }
-  }
-
-  const handleLoadExperiment2 = async (url: string, name: string) => {
-    setLoading2(true)
-    try {
-      const data = await experimentsService.loadExperimentFromURL(url, name)
-      setExperiment2(data)
-
-      // Auto-select first image if available
-      if (data.images.length > 0 && !selectedImage) {
-        setSelectedImage(data.images[0])
-      }
-    } catch (error) {
-      alert(`Failed to load experiment: ${error}`)
-    } finally {
-      setLoading2(false)
-    }
-  }
 
   const availableImages = new Set([
     ...(experiment1?.images || []),
@@ -125,16 +90,14 @@ export default function ExperimentComparison() {
             <p className="text-gray-600">Compare detection results across experiments</p>
           </header>
 
-      {/* Quick Start Experiments */}
+      {/* Load Experiments */}
       <div className="mb-8 px-6">
         <Disclosure defaultOpen>
           <DisclosureButton className="w-full text-left py-2 px-4 bg-gray-100 hover:bg-gray-200 rounded font-semibold text-gray-800">
-            Quick Start Experiments
+            Load Experiments
           </DisclosureButton>
           <DisclosurePanel className="pt-4 space-y-6">
-            {/* Prebuilt Experiments */}
             <div>
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Prebuilt Experiments</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {PREBUILT_EXPERIMENTS.map((preset) => (
                   <div
@@ -164,36 +127,6 @@ export default function ExperimentComparison() {
               </div>
             </div>
 
-            {/* Image Base URL */}
-            <div>
-              <label className="block text-sm text-gray-600 mb-2">
-                Image Base URL (optional - if images are hosted remotely)
-              </label>
-              <input
-                type="text"
-                value={imageBaseUrl}
-                onChange={(e) => setImageBaseUrl(e.target.value)}
-                placeholder="https://example.com/images"
-                className="w-full px-4 py-2 border border-gray-300 rounded"
-              />
-            </div>
-
-            {/* Experiment Loaders */}
-            <div>
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Load Custom Experiments from URL</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <ExperimentLoader
-                  onLoad={handleLoadExperiment1}
-                  loading={loading1}
-                  experimentNumber={1}
-                />
-                <ExperimentLoader
-                  onLoad={handleLoadExperiment2}
-                  loading={loading2}
-                  experimentNumber={2}
-                />
-              </div>
-            </div>
           </DisclosurePanel>
         </Disclosure>
       </div>

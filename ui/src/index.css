@@ -2,12 +2,10 @@
 
 body {
   min-height: 100vh;
-  background: white;
-  padding: 2rem;
+  margin: 0;
+  padding: 0;
 }
 
 #root {
-  max-width: 80rem;
-  margin-left: auto;
-  margin-right: auto;
+  min-height: 100vh;
 }

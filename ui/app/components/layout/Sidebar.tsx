@@ -14,7 +14,7 @@ export default function Sidebar() {
   const location = useLocation()
 
   return (
-    <div className="relative flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-6 dark:border-white/10 dark:bg-gray-900 dark:before:pointer-events-none dark:before:absolute dark:before:inset-0 dark:before:bg-black/10">
+    <div className="relative flex grow flex-col gap-y-5 overflow-y-auto border border-gray-200 bg-white px-6 dark:border-gray-800 dark:bg-gray-900 h-full rounded-lg shadow-sm">
       <div className="relative flex h-16 shrink-0 items-center">
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">
           AnimalDet

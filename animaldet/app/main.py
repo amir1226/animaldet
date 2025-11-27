@@ -1,5 +1,6 @@
 """FastAPI application for RF-DETR inference."""
 
+import csv
 import io
 import logging
 import os
@@ -52,6 +53,8 @@ class Metadata(BaseModel):
     input_shape: List[int]
     num_detections: int
     latency_ms: float
+    stitch_steps: Optional[int] = None
+    gpu_memory_mb: Optional[float] = None
 
 
 class InferenceResponse(BaseModel):
@@ -163,11 +166,16 @@ class RFDETRService:
                 )
             )
 
+        # Extract metrics if available
+        metrics = detections.get("metrics", {})
+
         metadata = Metadata(
             model=self.model_name,
             input_shape=[img_w, img_h],
             num_detections=len(detection_list),
             latency_ms=round(latency_ms, 2),
+            stitch_steps=metrics.get("stitch_steps"),
+            gpu_memory_mb=metrics.get("gpu_memory_mb"),
         )
 
         return {
@@ -325,12 +333,106 @@ async def health():
     return {"status": "healthy"}
 
 
+@app.get("/api/sample-images")
+async def get_sample_images():
+    """Get a list of sample images for testing."""
+    import random
+
+    demo_images_dir = project_root / "demo_images"
+
+    if not demo_images_dir.exists():
+        return JSONResponse(
+            content={"images": []},
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+        )
+
+    # Get all JPG files
+    all_images = list(demo_images_dir.glob("*.JPG")) + list(demo_images_dir.glob("*.jpg"))
+
+    # Select 5 random images
+    sample_count = min(5, len(all_images))
+    sampled_images = random.sample(all_images, sample_count) if all_images else []
+
+    # Return image names with no-cache headers
+    return JSONResponse(
+        content={"images": [img.name for img in sampled_images]},
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+    )
+
+
+@app.get("/api/ground-truth/{image_name}")
+async def get_ground_truth(image_name: str):
+    """Get ground truth detections for a specific image from HerdNet ground truth CSV.
+
+    Args:
+        image_name: Name of the image file
+
+    Returns:
+        Ground truth detections in the same format as inference results
+    """
+    # Use the actual ground truth CSV with bounding boxes
+    ground_truth_csv = project_root / "experiments" / "HerdNet" / "results" / "test_big_size_A_B_E_K_WH_WB.csv"
+
+    if not ground_truth_csv.exists():
+        return JSONResponse(
+            content={"detections": [], "available": False},
+            status_code=404
+        )
+
+    try:
+        detections = []
+        with open(ground_truth_csv, 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if row['Image'] == image_name:
+                    # Parse the detection from ground truth CSV
+                    # CSV format: Image,x1,y1,x2,y2,Label
+                    x1 = float(row['x1'])
+                    y1 = float(row['y1'])
+                    x2 = float(row['x2'])
+                    y2 = float(row['y2'])
+                    class_id = int(row['Label'])
+
+                    # Convert from x1,y1,x2,y2 to x,y,w,h format
+                    x = x1
+                    y = y1
+                    w = x2 - x1
+                    h = y2 - y1
+
+                    detections.append({
+                        "class_id": class_id,
+                        "class_name": get_class_name(class_id),
+                        "bbox": {
+                            "x": x,
+                            "y": y,
+                            "w": w,
+                            "h": h,
+                            "confidence": 1.0  # Ground truth has 100% confidence
+                        }
+                    })
+
+        return JSONResponse(
+            content={
+                "detections": detections,
+                "available": True,
+                "source": "HerdNet Ground Truth"
+            }
+        )
+    except Exception as e:
+        logger.exception(f"Failed to load ground truth: {str(e)}")
+        return JSONResponse(
+            content={"detections": [], "available": False, "error": str(e)},
+            status_code=500
+        )
+
+
 # Mount static file directories at the end (after all API routes)
 # Get project root (assuming this file is in animaldet/app/main.py)
 project_root = Path(__file__).parent.parent.parent
 
 data_dir = project_root / "data"
 outputs_dir = project_root / "outputs"
+demo_images_dir = project_root / "demo_images"
 static_dir = project_root / "static"
 
 # Mount directories if they exist
@@ -338,6 +440,8 @@ if data_dir.exists():
     app.mount("/data", StaticFiles(directory=str(data_dir)), name="data")
 if outputs_dir.exists():
     app.mount("/outputs", StaticFiles(directory=str(outputs_dir)), name="outputs")
+if demo_images_dir.exists():
+    app.mount("/demo_images", StaticFiles(directory=str(demo_images_dir)), name="demo_images")
 
 # Mount frontend static files (must be last to allow SPA routing)
 if static_dir.exists():

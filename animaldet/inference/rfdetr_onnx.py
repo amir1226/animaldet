@@ -13,10 +13,17 @@ Usage:
     detections = model.predict("image.jpg")
 """
 
+import tracemalloc
 import numpy as np
 from pathlib import Path
 from typing import Dict, List, Union, Optional
 from PIL import Image
+
+try:
+    import pynvml
+    NVML_AVAILABLE = True
+except ImportError:
+    NVML_AVAILABLE = False
 
 
 class RFDETRONNXInference:
@@ -44,6 +51,17 @@ class RFDETRONNXInference:
         self.resolution = resolution or 512
         self.providers = providers or ['CUDAExecutionProvider', 'CPUExecutionProvider']
 
+        # Initialize NVML for GPU memory tracking
+        self.nvml_initialized = False
+        self.gpu_device = None
+        if NVML_AVAILABLE:
+            try:
+                pynvml.nvmlInit()
+                self.nvml_initialized = True
+                self.gpu_device = pynvml.nvmlDeviceGetHandleByIndex(0)
+            except Exception as e:
+                print(f"Warning: Could not initialize NVML for GPU monitoring: {e}")
+
         # Load ONNX model
         if self.model_path.suffix != ".onnx":
             raise ValueError(f"Unsupported format: {self.model_path.suffix}. Use .onnx for ONNX models")
@@ -53,6 +71,16 @@ class RFDETRONNXInference:
         # Preprocessing parameters (ImageNet normalization)
         self.mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
         self.std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+
+    def _get_gpu_memory_mb(self) -> Optional[float]:
+        """Get current GPU memory usage in MB."""
+        if not self.nvml_initialized or not self.gpu_device:
+            return None
+        try:
+            info = pynvml.nvmlDeviceGetMemoryInfo(self.gpu_device)
+            return info.used / (1024 * 1024)  # Convert to MB
+        except Exception:
+            return None
 
     def _load_onnx(self):
         """Load ONNX model."""
@@ -105,6 +133,12 @@ class RFDETRONNXInference:
 
     def _predict_single(self, image: np.ndarray) -> Dict[str, np.ndarray]:
         """Run inference on a single image."""
+        # Start memory tracking
+        tracemalloc.start()
+
+        # Track GPU memory before inference
+        gpu_mem_before = self._get_gpu_memory_mb()
+
         h, w = image.shape[:2]
 
         # Resize to model resolution
@@ -120,6 +154,9 @@ class RFDETRONNXInference:
 
         # Run ONNX inference
         outputs = self.session.run(self.output_names, {self.input_name: image_tensor})
+
+        # Track GPU memory after inference
+        gpu_mem_after = self._get_gpu_memory_mb()
 
         # ONNX model returns tuple: (pred_logits, pred_boxes)
         pred_logits = outputs[0][0]  # Remove batch dimension
@@ -143,7 +180,28 @@ class RFDETRONNXInference:
         boxes[:, [0, 2]] *= w / self.resolution
         boxes[:, [1, 3]] *= h / self.resolution
 
-        return {"boxes": boxes, "scores": scores, "labels": labels}
+        # Get memory usage and stop tracking
+        current, peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+        cpu_memory_used_mb = peak / (1024 * 1024)  # Convert to MB
+
+        # Calculate GPU memory delta
+        gpu_memory_used_mb = None
+        if gpu_mem_before is not None and gpu_mem_after is not None:
+            gpu_memory_used_mb = round(gpu_mem_after - gpu_mem_before, 2)
+
+        metrics = {
+            "stitch_steps": 0,  # No stitching for single image
+            "cpu_memory_mb": round(cpu_memory_used_mb, 2),
+            "gpu_memory_mb": gpu_memory_used_mb,
+        }
+
+        return {
+            "boxes": boxes,
+            "scores": scores,
+            "labels": labels,
+            "metrics": metrics
+        }
 
     def _predict_with_stitcher(self, image: np.ndarray) -> Dict[str, np.ndarray]:
         """Run inference with stitching for large images using numpy-only implementation."""
@@ -163,6 +221,7 @@ class RFDETRONNXInference:
             output_names=self.output_names,
             size=(self.resolution, self.resolution),
             confidence_threshold=self.confidence_threshold,
+            gpu_device=self.gpu_device,
         )
 
         # Run stitched inference

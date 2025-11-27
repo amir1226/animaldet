@@ -1,7 +1,14 @@
 """Numpy-based image stitcher for ONNX inference without torch dependencies."""
 
+import tracemalloc
 import numpy as np
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
+
+try:
+    import pynvml
+    NVML_AVAILABLE = True
+except ImportError:
+    NVML_AVAILABLE = False
 
 
 class ONNXStitcher:
@@ -26,12 +33,24 @@ class ONNXStitcher:
         output_names: List[str],
         size: Tuple[int, int] = (512, 512),
         confidence_threshold: float = 0.5,
+        gpu_device=None,
     ):
         self.session = onnx_session
         self.input_name = input_name
         self.output_names = output_names
         self.size = size
         self.confidence_threshold = confidence_threshold
+        self.gpu_device = gpu_device
+
+    def _get_gpu_memory_mb(self) -> Optional[float]:
+        """Get current GPU memory usage in MB."""
+        if not self.gpu_device:
+            return None
+        try:
+            info = pynvml.nvmlDeviceGetMemoryInfo(self.gpu_device)
+            return info.used / (1024 * 1024)  # Convert to MB
+        except Exception:
+            return None
 
     def __call__(self, image: np.ndarray) -> Dict[str, np.ndarray]:
         """Apply stitching algorithm to the image.
@@ -44,7 +63,14 @@ class ONNXStitcher:
                 - 'boxes': Array of shape [N, 4] with boxes in (x1, y1, x2, y2) format
                 - 'scores': Array of shape [N] with confidence scores
                 - 'labels': Array of shape [N] with class labels
+                - 'metrics': Dictionary with 'stitch_steps', 'cpu_memory_mb', and 'gpu_memory_mb'
         """
+        # Start memory tracking
+        tracemalloc.start()
+
+        # Track GPU memory before inference
+        gpu_mem_before = self._get_gpu_memory_mb()
+
         # Get image dimensions
         c, h, w = image.shape
 
@@ -59,9 +85,13 @@ class ONNXStitcher:
         all_scores = []
         all_labels = []
 
+        # Track number of patches processed
+        stitch_steps = 0
+
         # Process each patch
         for i in range(n_patches_h):
             for j in range(n_patches_w):
+                stitch_steps += 1
                 # Calculate patch coordinates (no overlap)
                 y1 = i * patch_h
                 x1 = j * patch_w
@@ -112,12 +142,33 @@ class ONNXStitcher:
                 all_scores.append(scores)
                 all_labels.append(labels)
 
+        # Get memory usage and stop tracking
+        current, peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+        cpu_memory_used_mb = peak / (1024 * 1024)  # Convert to MB
+
+        # Track GPU memory after inference
+        gpu_mem_after = self._get_gpu_memory_mb()
+
+        # Calculate GPU memory delta
+        gpu_memory_used_mb = None
+        if gpu_mem_before is not None and gpu_mem_after is not None:
+            gpu_memory_used_mb = round(gpu_mem_after - gpu_mem_before, 2)
+
+        # Prepare metrics
+        metrics = {
+            'stitch_steps': stitch_steps,
+            'cpu_memory_mb': round(cpu_memory_used_mb, 2),
+            'gpu_memory_mb': gpu_memory_used_mb
+        }
+
         # Combine all detections
         if len(all_boxes) == 0:
             return {
                 'boxes': np.array([], dtype=np.float32).reshape(0, 4),
                 'scores': np.array([], dtype=np.float32),
-                'labels': np.array([], dtype=np.int64)
+                'labels': np.array([], dtype=np.int64),
+                'metrics': metrics
             }
 
         all_boxes = np.concatenate(all_boxes, axis=0)
@@ -128,7 +179,8 @@ class ONNXStitcher:
         return {
             'boxes': all_boxes,
             'scores': all_scores,
-            'labels': all_labels
+            'labels': all_labels,
+            'metrics': metrics
         }
 
     @staticmethod

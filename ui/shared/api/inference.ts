@@ -17,6 +17,8 @@ export interface Detection {
 export interface Metadata {
   latency_ms: number
   input_shape: [number, number]
+  gpu_memory_mb?: number
+  stitch_steps?: number
 }
 
 export interface InferenceResponse {
@@ -29,6 +31,13 @@ export interface InferenceResponse {
 export interface InferenceOptions {
   confidenceThreshold?: number
   model?: 'nano' | 'small'
+}
+
+export interface GroundTruthResponse {
+  detections: Detection[]
+  available: boolean
+  source?: string
+  error?: string
 }
 
 export class InferenceService {
@@ -53,6 +62,15 @@ export class InferenceService {
   async runInferenceFromDataURL(dataURL: string, options?: InferenceOptions): Promise<InferenceResponse> {
     const blob = await fetch(dataURL).then(r => r.blob())
     return this.runInference(blob, options)
+  }
+
+  async getGroundTruth(imageName: string): Promise<GroundTruthResponse> {
+    try {
+      const response = await fetch(`/api/ground-truth/${encodeURIComponent(imageName)}`)
+      return await response.json()
+    } catch (error) {
+      return { detections: [], available: false }
+    }
   }
 }
 

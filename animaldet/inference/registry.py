@@ -124,7 +124,7 @@ MODELS = ModelRegistry()
 # Register available models (both trained for 6 animal classes)
 MODELS.register(
     name="nano",
-    model_path="rf-detr-nano-animaldet.onnx",
+    model_path="modelos/rf-detr-nano-animaldet.onnx",
     resolution=384,
     num_classes=6,  # 6 animal classes
     description="RF-DETR Nano - Lightweight and fast (384x384)",
@@ -134,7 +134,7 @@ MODELS.register(
 
 MODELS.register(
     name="small",
-    model_path="rf-detr-small-animaldet.onnx",
+    model_path="modelos/rf-detr-small-animaldet.onnx",
     resolution=512,
     num_classes=6,  # 6 animal classes
     description="RF-DETR Small - Higher resolution and accuracy (512x512)",
