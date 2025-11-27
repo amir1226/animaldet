@@ -4,6 +4,8 @@ Esta carpeta contiene los notebooks de Jupyter para **análisis exploratorio**, 
 
 ## 📓 Notebooks Disponibles
 
+### Notebooks de Análisis
+
 ### 1. `exploratory_data_analysis.ipynb`
 
 **Análisis Exploratorio de Datos (EDA)**
@@ -33,6 +35,8 @@ Esta carpeta contiene los notebooks de Jupyter para **análisis exploratorio**, 
 **No requiere:** Modelos entrenados
 
 ---
+
+### Notebooks de Entrenamiento
 
 ### 3. `herdnet_train.ipynb`
 
@@ -73,24 +77,47 @@ Esta carpeta contiene los notebooks de Jupyter para **análisis exploratorio**, 
 
 ---
 
-### 5. `inference_benchmark.ipynb`
+### Notebooks de Evaluación
 
-**Comparación de Modelos y Benchmark**
+### 5. `evaluation.ipynb`
+
+**Evaluación y Comparación de Modelos**
+
+- Carga predicciones de todos los modelos (HerdNet, RF-DETR Nano/Small/Large)
+- Compara resultados de Fase 1 vs Fase 2 (antes y después de Hard Negative Mining)
+- Calcula métricas por especie: F1, Precision, Recall, MAE, RMSE
+- Genera visualizaciones comparativas entre modelos
+- Análisis detallado del impacto del Hard Negative Mining
+
+**Salidas generadas:**
+- Tablas comparativas de métricas por modelo y fase
+- Gráficas de comparación por especie
+- Análisis de mejora entre fases
+
+**Prerequisitos:**
+- CSV de detecciones en `datos/detections/` (generados por `herdnet_train.ipynb` y `detr_train.ipynb`)
+- Ground truth en `data-delplanque/test.csv`
+
+---
+
+### 6. `inference_benchmark.ipynb`
+
+**Medición de Latencias y Benchmark**
 
 - Carga todos los modelos entrenados
 - Ejecuta inferencia en el conjunto de prueba
-- Calcula métricas: F1, Precision, Recall, MAE, RMSE
-- Mide latencias de inferencia
-- Genera gráficas comparativas
+- Mide tiempos de inferencia (latencias)
+- Compara velocidad de procesamiento entre modelos
+- Genera gráficas de rendimiento
 
 **Salidas generadas:**
-- Métricas de evaluación
-- Gráficas de comparación
 - CSV de latencias: `datos/latency/inference_times_*.csv`
+- Gráficas de comparación de tiempos
+- Análisis de throughput
 
 **Prerequisitos:**
 - Modelos entrenados (de `herdnet_train.ipynb` y `detr_train.ipynb`)
-- CSV de detecciones en `datos/detections/`
+- Dataset de prueba
 
 ---
 
@@ -105,7 +132,8 @@ Esta carpeta contiene los notebooks de Jupyter para **análisis exploratorio**, 
 4. `detr_train.ipynb` (RF-DETR variantes)
 
 ### Para evaluar y comparar:
-5. `inference_benchmark.ipynb`
+5. `evaluation.ipynb` (comparación de métricas)
+6. `inference_benchmark.ipynb` (medición de latencias)
 
 ## 🚀 Cómo Ejecutar
 
@@ -175,8 +203,13 @@ Los notebooks generan varios tipos de salidas:
 - `results/rfdetr_large/` - Modelos RF-DETR Large
 
 ### CSV de resultados
-- `datos/detections/` - Predicciones de los modelos
+- `datos/detections/` - Predicciones de los modelos (stage 1 y stage 2)
 - `datos/latency/` - Tiempos de inferencia
+
+### Análisis y visualizaciones
+- Gráficas comparativas de métricas por modelo
+- Tablas de evaluación por especie
+- Análisis de impacto del Hard Negative Mining
 
 ### Datasets procesados
 - `data-*-detr/` - Parches generados (Fase 1)
