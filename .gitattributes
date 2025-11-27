@@ -4,3 +4,4 @@ modelos/*.onnx filter=lfs diff=lfs merge=lfs -text
 experiments/HerdNet/results/** filter=lfs diff=lfs merge=lfs -text
 modelos/rf-detr-small-animaldet.pth filter=lfs diff=lfs merge=lfs -text
 demo_images/* filter=lfs diff=lfs merge=lfs -text
+static/** filter=lfs diff=lfs merge=lfs -text
