@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { createPlaceholderImage } from '@animaldet/shared/utils/placeholderImage'
 
 interface ImageThumbnailListProps {
   images: string[]
@@ -74,12 +75,8 @@ export default function ImageThumbnailList({
                       loading="lazy"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement
-                        target.style.display = 'none'
-                        const parent = target.parentElement
-                        if (parent) {
-                          parent.classList.add('flex', 'items-center', 'justify-center')
-                          parent.innerHTML = '<span class="text-xs text-gray-500">Error</span>'
-                        }
+                        target.src = createPlaceholderImage(80, 80)
+                        target.style.objectFit = 'contain'
                       }}
                     />
                   </div>

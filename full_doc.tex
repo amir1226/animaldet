@@ -1,0 +1,167 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{float}
+
+\title{Animaldet Documentation}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{About the team}
+
+The dream team is integrated by:
+
+\begin{itemize}
+    \item Amir Sadour
+    \item Camilo Rodriguez
+    \item Claudia Agudelo
+    \item Luis Manrique
+\end{itemize}
+
+\section{Live demo}
+
+You can see a demo in this \href{http://animaldet-alb-510958915.us-east-1.elb.amazonaws.com/}{link}
+
+\section{Repository}
+
+Your code could be found on \href{https://github.com/amir1226/animaldet}{github}
+
+\section{General animaldet installation guide}
+
+Animaldet was built as a containerized application which can run locally or at any cloud which support containers
+
+\section{Local deployment}
+
+First of all with the repo cloned you must execute
+\begin{lstlisting}[language=bash]
+git lfs pull
+\end{lstlisting}
+
+To get models and other useful information to deploy your model.
+
+You should have \texttt{docker} installed.
+
+After that you can execute
+
+\begin{lstlisting}[language=bash]
+make build
+docker run -p 8000:8000 animaldet:latest
+\end{lstlisting}
+
+Then when opening in your browser \texttt{localhost:8000} you must see the application running.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{static/img/main_view.png}
+\caption{Main view}
+\end{figure}
+
+For user guide about how to use Animaldet you can check the \href{USER_GUIDE.md}{next link}
+
+\section{Cloud deployment}
+
+Animaldet included deployment platform is \texttt{AWS ECS}, with the next architecture:
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{static/img/architecture.png}
+\caption{Architecture}
+\end{figure}
+
+We included all the required infrastructure as a code at \texttt{infra/aws}, there we use \texttt{terraform}.
+
+In order to deploy the application you must configure your aws credentials, more information at \href{https://docs.aws.amazon.com/cli/v1/userguide/cli-configure-files.html}{aws cli configuration documentation}
+
+Commands to deploy the application
+
+\begin{lstlisting}[language=bash]
+make deploy
+\end{lstlisting}
+
+It will execute \texttt{docker build}, then \texttt{terraform apply} which is going to:
+
+\begin{enumerate}
+    \item Build docker image locally
+    \item Login you to ECS registry
+    \item Push the image to ECS
+    \item Create clusters, task definitions, policies and load balancer to get the application working.
+\end{enumerate}
+
+\section{Animaldet: how to use our animal detection tool}
+
+First of all, the main screen:
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{static/img/main_view.png}
+\caption{Main screen}
+\end{figure}
+
+You may chose your own images or select one of the sample ones.
+
+If you decide to pick one of the samples, you are going to see the image annotations and a button to predict executions:
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{static/img/guide/sample_chosen.png}
+\caption{Sample chosen}
+\end{figure}
+
+You can also pick between \texttt{small} and \texttt{nano} model, and change the model confidence.
+
+\subsection{Model size}
+
+Nano model uses 30\% less ram than Small model, but as it uses a lower resolution it must perform more inferences over the whole image, inference times does not differ much between those models.
+
+\subsection{Confidence}
+
+Each model has its own suggested confidence, confidence is a model output where it told us how confident the model is about a found bounding box with its respective class, your recommended confidence is the one which maximizes performance but you may experiment with different values
+
+\subsection{Performing inference}
+
+Once the image and parameters are chosen, you can click then \texttt{Detect Animals} button, and a loading screen must start
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{static/img/guide/loading.png}
+\caption{Loading screen}
+\end{figure}
+
+Once finished it must show the image detections:
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{static/img/guide/detections.png}
+\caption{Detections}
+\end{figure}
+
+\section{Low confidence: over detection}
+
+When you pick a lower confidence you may expect over prediction as shown in the next capture:
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{static/img/guide/overdetection.png}
+\caption{Over detection}
+\end{figure}
+
+It may work for experimentation purposes, but please be careful.
+
+\section{Experiment comparison: lets see how the model performed}
+
+We have added an experiments view where you can see detections over the whole test dataset compared with the ground truth:
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{static/img/guide/experiments.png}
+\caption{Experiments view}
+\end{figure}
+
+There you can pick any image from the test set and check the difference between the ground truth and your predictions.
+
+\end{document}

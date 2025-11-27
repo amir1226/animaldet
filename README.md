@@ -2,7 +2,17 @@
 
 Sistema de detección automática de mamíferos africanos en imágenes aéreas de UAV usando RF-DETR, basado en el dataset de [Delplanque et al. (2022)](https://zslpublications.onlinelibrary.wiley.com/doi/10.1002/rse2.234).
 
+# Demo en vivo
+
+Puedes ver la demo de la aplicacion siguiendo el siguiente [enlace](http://animaldet-alb-510958915.us-east-1.elb.amazonaws.com/)
+
+# Guia de usuario
+
+Para informacion de usuario, por favor visitar la [guia](./USER_GUIDE.md) de uso de la plataforma Animaldet
+
 ## 🚀 Inicio Rápido
+
+## 📋 Description
 
 ### Ejecutar la aplicación (Docker)
 
@@ -29,6 +39,11 @@ curl -X POST http://localhost:8000/api/inference \
 ```
 
 > **Nota:** La primera construcción tarda ~5-10 minutos (build de frontend + conversión ONNX).
+
+## Despliegue en la nube
+
+Para instrucciones de despliegue en la nube (actualmente soportamos despliegue en AWS ECS) visite nuestra [guia](./INSTALL.md)
+
 
 ## 📊 Dataset
 

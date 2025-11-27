@@ -19,6 +19,23 @@ export default {
           DEFAULT: '#C9B896',
           dark: '#8B5A2B',
         },
+        // Presentation color palette
+        forest: {
+          DEFAULT: '#1a4d3d',
+          dark: '#0f332a',
+        },
+        lavender: {
+          light: '#e8eef9',
+          DEFAULT: '#c5d5f0',
+        },
+        sage: {
+          light: '#e8f0d4',
+          DEFAULT: '#d4e8b4',
+        },
+        sand: {
+          light: '#e8dcc8',
+          DEFAULT: '#d4c8b4',
+        },
       },
     },
   },

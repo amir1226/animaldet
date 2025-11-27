@@ -1,0 +1,44 @@
+@startuml Architecture Diagram
+
+skinparam rectangle {
+    BackgroundColor<<vpc>> #E8F4F8
+    BackgroundColor<<public>> #A8D5E2
+    BackgroundColor<<private>> #B8E6B8
+    BackgroundColor<<ecr>> #FFD9B3
+    BackgroundColor<<cloudwatch>> #FFD9B3
+    BorderColor Black
+    RoundCorner 10
+}
+
+skinparam component {
+    BackgroundColor #FFFFFF
+    BorderColor Black
+}
+
+actor "Usuario /\nNavegador" as user
+
+rectangle "AWS Cloud (us-east-1)" as aws #F0F0F0 {
+    rectangle "VPC (Red Privada)" as vpc <<vpc>> {
+        rectangle "Subnet y Pública" as public_subnet <<public>> {
+            component "Application Load Balancer\n(Puerto 80)" as alb #A8D5E2
+        }
+
+        note right of alb
+            Balanceo de Carga
+        end note
+
+        rectangle "Subnet y Privada" as private_subnet <<private>> {
+            component "Cluster ECS Fargate Spot\n(Contenedores Docker /\nFastAPI)" as ecs #B8E6B8
+        }
+    }
+
+    rectangle "Amazon ECR\n(Registro de Imágenes)" as ecr <<ecr>>
+    rectangle "CloudWatch\n(Logs & Métricas)" as cloudwatch <<cloudwatch>>
+}
+
+user -down-> alb : HTTPS
+alb -down-> ecs
+ecs .up.> ecr : Pull
+ecs .down.> cloudwatch : Push
+
+@enduml

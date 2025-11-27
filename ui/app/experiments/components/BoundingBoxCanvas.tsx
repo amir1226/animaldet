@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { ExperimentDetection } from '@animaldet/shared/api/experiments'
 import { getClassName } from '@animaldet/shared/utils/classNames'
+import { createPlaceholderImage } from '@animaldet/shared/utils/placeholderImage'
 
 interface BoundingBoxCanvasProps {
   imageUrl: string
@@ -102,6 +103,10 @@ export default function BoundingBoxCanvas({
         src={imageUrl}
         alt="Experiment"
         className="w-full h-auto block"
+        onError={(e) => {
+          const target = e.target as HTMLImageElement
+          target.src = createPlaceholderImage()
+        }}
       />
       <canvas
         ref={canvasRef}
