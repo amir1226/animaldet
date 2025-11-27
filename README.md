@@ -2,13 +2,21 @@
 
 Sistema de detección automática de mamíferos africanos en imágenes aéreas de UAV usando RF-DETR, basado en el dataset de [Delplanque et al. (2022)](https://zslpublications.onlinelibrary.wiley.com/doi/10.1002/rse2.234).
 
-# Demo en vivo
+---
 
-Puedes ver la demo de la aplicacion siguiendo el siguiente [enlace](http://animaldet-alb-510958915.us-east-1.elb.amazonaws.com/)
+## 📖 Documentación Completa
 
-# Guia de usuario
+Para la **documentación completa del proyecto** incluyendo arquitectura, guía de usuario detallada y análisis de resultados, por favor consultar:
 
-Para informacion de usuario, por favor visitar la [guia](./USER_GUIDE.md) de uso de la plataforma Animaldet
+**[📄 FULL_DOC.md](./FULL_DOC.md)** - Documentación técnica completa del proyecto
+
+---
+
+## 🔗 Enlaces Rápidos
+
+- **Demo en vivo:** [AnimalDet App](http://animaldet-alb-510958915.us-east-1.elb.amazonaws.com/)
+- **Documentación completa:** [FULL_DOC.md](./FULL_DOC.md) - Arquitectura, guía de usuario detallada y resultados
+- **Guía de instalación:** [INSTALL.md](./INSTALL.md) - Despliegue local y en la nube
 
 ## 🚀 Inicio Rápido
 
@@ -19,7 +27,6 @@ Para informacion de usuario, por favor visitar la [guia](./USER_GUIDE.md) de uso
 ```bash
 # Clonar el repositorio
 git clone https://github.com/amir1226/animaldet.git
-cd animaldet
 
 # Construir y ejecutar
 docker build -t animaldet:latest .
@@ -113,12 +120,13 @@ animaldet/
 │   ├── README.md                 # Documentación y links a Google Drive
 │   └── rf-detr-small-animaldet.pth  # RF-DETR Small (491 MB, Git LFS)
 ├── Notebooks/                    # Notebooks de análisis y entrenamiento
-│   ├── detr_train.ipynb          # Entrenamiento RF-DETR (2 fases)
-│   ├── herdnet_train.ipynb       # Entrenamiento HerdNet
-│   ├── data_preparation_flow.ipynb
-│   ├── exploratory_data_analysis.ipynb
-│   ├── inference_benchmark.ipynb
-│   └── utils/                    # Helpers para notebooks
+│   ├── exploratory_data_analysis.ipynb  # EDA del dataset
+│   ├── data_preparation_flow.ipynb      # Pipeline de preprocesamiento
+│   ├── herdnet_train.ipynb              # Entrenamiento HerdNet
+│   ├── detr_train.ipynb                 # Entrenamiento RF-DETR
+│   ├── evaluation.ipynb                 # Comparación de modelos
+│   ├── inference_benchmark.ipynb        # Medición de latencias
+│   └── utils/                           # Helpers para notebooks
 ├── animaldet/                    # Paquete Python principal
 │   ├── app/                      # API FastAPI
 │   ├── inference/                # Inferencia ONNX/PyTorch
@@ -182,11 +190,12 @@ Los notebooks documentan el flujo completo de experimentación:
 
 | Notebook | Descripción |
 |----------|-------------|
-| `detr_train.ipynb` | Entrenamiento RF-DETR completo (Fase 1 + Fase 2) |
-| `herdnet_train.ipynb` | Entrenamiento HerdNet (baseline) |
-| `data_preparation_flow.ipynb` | Visualización del pipeline de parchificación y augmentación |
 | `exploratory_data_analysis.ipynb` | EDA del dataset, estadísticas y distribuciones |
-| `inference_benchmark.ipynb` | Comparación de modelos, métricas y latencias |
+| `data_preparation_flow.ipynb` | Visualización del pipeline de parchificación y augmentación |
+| `herdnet_train.ipynb` | Entrenamiento HerdNet (baseline) - Fase 1 y 2 |
+| `detr_train.ipynb` | Entrenamiento RF-DETR (Nano/Small/Large) - Fase 1 y 2 |
+| `evaluation.ipynb` | Comparación de métricas entre modelos y fases |
+| `inference_benchmark.ipynb` | Medición de latencias y throughput |
 
 **Ejecutar notebooks:**
 ```bash
@@ -197,6 +206,8 @@ source .venv/bin/activate
 # Iniciar Jupyter
 jupyter notebook Notebooks/
 ```
+
+**Documentación detallada:** Ver [`Notebooks/README.md`](Notebooks/README.md) para información completa de cada notebook.
 
 ## 🎯 Modelos
 
@@ -231,5 +242,12 @@ Este proyecto usa código de:
 
 ---
 
-**Última actualización:** 2025-11-25  
-**Estado:** 🟢 RF-DETR Small en producción; API y UI desplegadas  
+## 👥 Equipo
+
+Este proyecto fue desarrollado por:
+
+- **Amir Sadour** - [@amir1226](https://github.com/amir1226)
+- **Camilo Rodriguez**
+- **Claudia Agudelo**
+- **Luis Manrique**
+
