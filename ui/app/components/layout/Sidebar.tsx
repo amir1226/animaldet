@@ -3,7 +3,7 @@ import { ChartPieIcon, BeakerIcon } from '@heroicons/react/24/outline'
 
 const navigation = [
   { name: 'Inference', href: '/', icon: ChartPieIcon },
-  { name: 'Experiments', href: '/experiments', icon: BeakerIcon },
+  { name: 'Results', href: '/experiments', icon: BeakerIcon },
 ]
 
 function classNames(...classes: string[]) {

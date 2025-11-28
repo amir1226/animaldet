@@ -12,6 +12,7 @@ dependencies = [
     "tqdm>=4.65.0",
     "onnxruntime>=1.23.2",
     "nvidia-ml-py>=13.580.82",
+    "pandas>=2.3.3",
 ]
 
 [dependency-groups]

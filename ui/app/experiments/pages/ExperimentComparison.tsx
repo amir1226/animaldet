@@ -1,9 +1,18 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/react'
 import { experimentsService, ExperimentData } from '@animaldet/shared/api/experiments'
 import BoundingBoxCanvas from '../components/BoundingBoxCanvas'
 import ImageThumbnailList from '../components/ImageThumbnailList'
 import { createPlaceholderImage } from '@animaldet/shared/utils/placeholderImage'
+
+const CLASS_NAMES: Record<number, string> = {
+  1: 'Topi',
+  2: 'Buffalo',
+  3: 'Kob',
+  4: 'Warthog',
+  5: 'Waterbuck',
+  6: 'Elephant',
+}
 
 interface PrebuiltExperiment {
   name: string
@@ -37,11 +46,38 @@ export default function ExperimentComparison() {
   const [showExp1, setShowExp1] = useState(true)
   const [showExp2, setShowExp2] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [selectedClass, setSelectedClass] = useState<number | null>(null)
 
-  const availableImages = new Set([
-    ...(experiment1?.images || []),
-    ...(experiment2?.images || [])
-  ])
+  // Filter images by selected class
+  const filteredImages = useMemo(() => {
+    const allImages = new Set([
+      ...(experiment1?.images || []),
+      ...(experiment2?.images || [])
+    ])
+
+    if (!selectedClass) {
+      return allImages
+    }
+
+    // Find images that contain detections of the selected class
+    const imagesWithClass = new Set<string>()
+
+    experiment1?.detections.forEach(det => {
+      if (det.label === selectedClass) {
+        imagesWithClass.add(det.image)
+      }
+    })
+
+    experiment2?.detections.forEach(det => {
+      if (det.label === selectedClass) {
+        imagesWithClass.add(det.image)
+      }
+    })
+
+    return imagesWithClass
+  }, [experiment1, experiment2, selectedClass])
+
+  const availableImages = filteredImages
 
   const getImageUrl = (imageName: string) => {
     if (!imageBaseUrl) return imageName
@@ -114,6 +150,20 @@ export default function ExperimentComparison() {
     loadDefaults()
   }, [])
 
+  // Auto-select first image when filtered images change (e.g., when class filter changes)
+  useEffect(() => {
+    const images = Array.from(availableImages)
+    if (images.length > 0) {
+      // If current selected image is not in filtered list, select the first one
+      if (!selectedImage || !availableImages.has(selectedImage)) {
+        setSelectedImage(images[0])
+      }
+    } else {
+      // No images available, clear selection
+      setSelectedImage(null)
+    }
+  }, [availableImages])
+
   const hasExperiments = experiment1 || experiment2
 
   return (
@@ -123,10 +173,44 @@ export default function ExperimentComparison() {
         <div className={`h-full transition-all duration-300 p-6`}>
           <header className="pb-0 mb-8">
             <h1 className="text-3xl font-bold text-black mb-1">
-              Experiment Comparison
+              Results Comparison
             </h1>
             <p className="text-gray-600">Compare detection results across experiments</p>
           </header>
+
+      {/* Class Filter */}
+      {(experiment1 || experiment2) && (
+        <div className="mb-6">
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Filter by Animal Class
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setSelectedClass(null)}
+              className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                selectedClass === null
+                  ? 'bg-black text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              All Classes
+            </button>
+            {Object.entries(CLASS_NAMES).map(([classId, className]) => (
+              <button
+                key={classId}
+                onClick={() => setSelectedClass(Number(classId))}
+                className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                  selectedClass === Number(classId)
+                    ? 'bg-black text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                {className}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Experiment Info */}
       {(experiment1 || experiment2) && (
