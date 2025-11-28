@@ -1,0 +1,322 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{float}
+\usepackage{xcolor}
+
+% Configuración de estilo para código
+\definecolor{codegray}{rgb}{0.95,0.95,0.95}
+\definecolor{framecolor}{rgb}{0.85,0.85,0.85}
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+
+% Estilo por defecto para código
+\lstset{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=tb,
+    framerule=0.8pt,
+    rulecolor=\color{framecolor},
+    numbers=none,
+    xleftmargin=15pt,
+    xrightmargin=15pt,
+    framexleftmargin=10pt,
+    framexrightmargin=10pt,
+    aboveskip=12pt,
+    belowskip=12pt,
+    showstringspaces=false,
+    columns=flexible
+}
+
+% Estilo específico para comandos bash
+\lstdefinestyle{bashstyle}{
+    language=bash,
+    backgroundcolor=\color{black!90},
+    basicstyle=\ttfamily\footnotesize\color{white},
+    breaklines=true,
+    frame=tb,
+    framerule=1pt,
+    rulecolor=\color{black},
+    xleftmargin=15pt,
+    xrightmargin=15pt,
+    framexleftmargin=10pt,
+    framexrightmargin=10pt,
+    aboveskip=12pt,
+    belowskip=12pt
+}
+
+\title{AnimalDet: Sistema de Detección Multiespecie mediante RF-DETR \\ para Imágenes Aéreas de la Sabana Africana}
+\author{
+    \begin{tabular}{c@{\hspace{2cm}}c}
+        \textbf{Amir Sadour} & \textbf{Camilo Rodriguez} \\
+        \textit{MaIA} & \textit{MaIA} \\
+        \textit{Universidad de los Andes} & \textit{Universidad de los Andes} \\
+        \small\texttt{a.sadour@uniandes.edu.co} & \small\texttt{ca.rodriguezs123@uniandes.edu.co} \\[0.5cm]
+        \textbf{Claudia Agudelo} & \textbf{Luis Manrique} \\
+        \textit{MaIA} & \textit{MaIA} \\
+        \textit{Universidad de los Andes} & \textit{Universidad de los Andes} \\
+        \small\texttt{cj.agudelo@uniandes.edu.co} & \small\texttt{l.manriquec@uniandes.edu.co}
+    \end{tabular}
+}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Demo en vivo}
+
+Puede ver una demostración en este \href{http://animaldet-alb-510958915.us-east-1.elb.amazonaws.com/}{enlace}
+
+\section{Repositorio}
+
+El código puede encontrarse en \href{https://github.com/amir1226/animaldet}{github}
+
+\section{Guía general de instalación de Animaldet}
+
+Animaldet fue construido como una aplicación contenerizada que puede ejecutarse localmente o en cualquier nube que soporte contenedores
+
+\section{Dependencias y Requisitos del Sistema}
+
+\subsection{Requisitos de Hardware}
+
+\begin{itemize}
+    \item \textbf{Memoria RAM:} Mínimo 8 GB (recomendado 16 GB)
+    \item \textbf{Espacio en disco:} 10 GB disponibles
+    \item \textbf{GPU (opcional):} NVIDIA con soporte CUDA 11.8+ para inferencia acelerada
+    \item \textbf{CPU:} Procesador multi-core (mínimo 4 cores)
+\end{itemize}
+
+\subsection{Software Requerido}
+
+\textbf{Para ejecución con Docker (Recomendado):}
+\begin{itemize}
+    \item \textbf{Docker Desktop} (versión 20.10 o superior) o Docker Engine en Linux
+    \item \textbf{Git} (versión 2.0 o superior)
+    \item \textbf{Git LFS} para descarga de modelos
+\end{itemize}
+
+\textbf{Para desarrollo local:}
+\begin{itemize}
+    \item \textbf{Python:} 3.12 o superior
+    \item \textbf{Node.js:} 20.x o superior (para compilar frontend)
+    \item \textbf{uv:} Gestor de paquetes de Python
+\end{itemize}
+
+\subsection{Dependencias de Python}
+
+El proyecto utiliza las siguientes librerías principales:
+
+\begin{itemize}
+    \item \textbf{FastAPI:} Framework web para la API
+    \item \textbf{ONNX Runtime:} Motor de inferencia optimizado
+    \item \textbf{Pillow:} Procesamiento de imágenes
+    \item \textbf{NumPy:} Computación numérica
+    \item \textbf{Uvicorn:} Servidor ASGI
+\end{itemize}
+
+Ver archivo \texttt{pyproject.toml} para lista completa de dependencias.
+
+\subsection{Dependencias del Frontend}
+
+\begin{itemize}
+    \item \textbf{React:} 18.x - Framework UI
+    \item \textbf{Vite:} Build tool y dev server
+    \item \textbf{TypeScript:} Tipado estático
+    \item \textbf{TailwindCSS:} Framework de estilos
+\end{itemize}
+
+Ver archivo \texttt{ui/package.json} para lista completa.
+
+\section{Despliegue local}
+
+Primero, con el repositorio clonado debe ejecutar
+
+\begin{lstlisting}[style=bashstyle]
+git lfs pull
+\end{lstlisting}
+
+Para obtener los modelos y otra información útil para desplegar su modelo.
+
+Debe tener \texttt{docker} instalado.
+
+Después de eso puede ejecutar
+
+\begin{lstlisting}[style=bashstyle]
+make build
+docker run -p 8000:8000 animaldet:latest
+\end{lstlisting}
+
+Luego al abrir en su navegador \texttt{localhost:8000} debe ver la aplicación funcionando.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{static/img/main_view.png}
+\caption{Vista principal}
+\end{figure}
+
+Para la guía de usuario sobre cómo usar Animaldet puede consultar este \href{USER_GUIDE.md}{enlace}
+
+\section{Despliegue en la nube}
+
+La plataforma de despliegue incluida en Animaldet es \texttt{AWS ECS}, con la siguiente arquitectura:
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{static/img/architecture.png}
+\caption{Arquitectura}
+\end{figure}
+
+Incluimos toda la infraestructura requerida como código en \texttt{infra/aws}, donde usamos \texttt{terraform}.
+
+Para desplegar la aplicación debe configurar sus credenciales de AWS, más información en \href{https://docs.aws.amazon.com/cli/v1/userguide/cli-configure-files.html}{documentación de configuración de AWS CLI}
+
+Comandos para desplegar la aplicación
+
+\begin{lstlisting}[style=bashstyle]
+make deploy
+\end{lstlisting}
+
+Esto ejecutará \texttt{docker build}, luego \texttt{terraform apply} que va a:
+
+\begin{enumerate}
+    \item Construir la imagen Docker localmente
+    \item Iniciar sesión en el registro ECS
+    \item Subir la imagen a ECS
+    \item Crear clusters, definiciones de tareas, políticas y balanceador de carga para que la aplicación funcione
+\end{enumerate}
+
+\section{Parametrización}
+
+El sistema permite ajustar parámetros de funcionamiento mediante variables de entorno:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|l|p{6cm}|}
+\hline
+\textbf{Variable} & \textbf{Valor por defecto} & \textbf{Descripción} \\
+\hline
+\texttt{MODEL\_PATH} & \texttt{model.onnx} & Ruta al modelo ONNX \\
+\hline
+\texttt{CONFIDENCE\_THRESHOLD} & \texttt{0.5} & Umbral de confianza (0.0-1.0) \\
+\hline
+\texttt{NMS\_THRESHOLD} & \texttt{0.45} & Umbral de NMS \\
+\hline
+\texttt{RESOLUTION} & \texttt{512} & Resolución de entrada \\
+\hline
+\texttt{USE\_STITCHER} & \texttt{true} & Habilitar stitching \\
+\hline
+\texttt{PORT} & \texttt{8000} & Puerto HTTP \\
+\hline
+\end{tabular}
+\caption{Variables de entorno configurables}
+\end{table}
+
+\subsection{Ejemplo de configuración}
+
+\textbf{Opción 1: Usando variables de entorno}
+
+\begin{lstlisting}[style=bashstyle]
+docker run -p 8000:8000 \
+  -e CONFIDENCE_THRESHOLD=0.6 \
+  -e RESOLUTION=640 \
+  animaldet:latest
+\end{lstlisting}
+
+\textbf{Opción 2: Usando archivo .env}
+
+Crear archivo \texttt{.env} en la raíz del proyecto:
+
+\begin{lstlisting}
+MODEL_PATH=model.onnx
+CONFIDENCE_THRESHOLD=0.5
+RESOLUTION=512
+USE_STITCHER=true
+PORT=8000
+\end{lstlisting}
+
+Ejecutar con:
+
+\begin{lstlisting}[style=bashstyle]
+docker run -p 8000:8000 --env-file .env animaldet:latest
+\end{lstlisting}
+
+\section{Animaldet: cómo usar nuestra herramienta de detección de animales}
+
+Primero, la pantalla principal:
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{static/img/main_view.png}
+\caption{Pantalla principal}
+\end{figure}
+
+Puede elegir sus propias imágenes o seleccionar una de las muestras, donde se 
+incluye una imagen de muestra por cada clase.
+
+Si decide seleccionar una de las muestras, verá las anotaciones de la imagen y un botón para ejecutar predicciones:
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{static/img/guide/sample_chosen.png}
+\caption{Muestra seleccionada}
+\end{figure}
+
+También puede elegir entre el modelo \texttt{small} y \texttt{nano}, y cambiar la confianza del modelo.
+
+\subsection{Tamaño del modelo}
+
+El modelo Nano usa 30\% menos RAM que el modelo Small, pero como usa una resolución menor debe realizar más inferencias sobre toda la imagen, los tiempos de inferencia no difieren mucho entre estos modelos.
+
+\subsection{Confianza}
+
+Cada modelo tiene su propia confianza sugerida, la confianza es una salida del modelo que nos indica qué tan seguro está sobre una caja delimitadora encontrada con su respectiva clase, su confianza recomendada es la que maximiza el rendimiento pero puede experimentar con diferentes valores
+
+\subsection{Realizando inferencia}
+
+Una vez que la imagen y los parámetros están elegidos, puede hacer clic en el botón \texttt{Detect Animals} y comenzará una pantalla de carga
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{static/img/guide/loading.png}
+\caption{Pantalla de carga}
+\end{figure}
+
+Una vez finalizado mostrará las detecciones de la imagen:
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{static/img/guide/detections.png}
+\caption{Detecciones}
+\end{figure}
+
+\section{Confianza baja: sobre-detección}
+
+Cuando elige una confianza más baja puede esperar sobre-predicción como se muestra en la siguiente captura:
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{static/img/guide/overdetection.png}
+\caption{Sobre-detección}
+\end{figure}
+
+Puede funcionar para propósitos de experimentación, pero por favor tenga cuidado.
+
+\section{Comparación de resultados: veamos cómo se desempeñó el modelo}
+
+Hemos agregado una vista de resultados donde puede ver detecciones sobre todo el conjunto de datos de prueba comparado con el ground truth:
+
+Allí podra filtrar por clase y ver las detecciones de el modelo comparado con las anotaciones reales.
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{static/img/guide/results.png}
+\caption{Vista de resultados}
+\end{figure}
+
+Allí puede elegir cualquier imagen del conjunto de prueba y verificar la diferencia entre el ground truth y sus predicciones.
+
+\end{document}

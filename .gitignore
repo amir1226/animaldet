@@ -198,3 +198,15 @@ notebooks/best_resnet_model.pth
 
 # MLFlow
 mlruns/
+
+# Infra
+**lock.hcl
+
+# ui
+ui/.vite
+
+# Datasets
+data-delplanque/
+general_dataset/
+data-sample/
+

@@ -1,0 +1,194 @@
+"""Numpy-based image stitcher for ONNX inference without torch dependencies."""
+
+import tracemalloc
+import numpy as np
+from typing import Dict, List, Tuple, Optional
+
+try:
+    import pynvml
+    NVML_AVAILABLE = True
+except ImportError:
+    NVML_AVAILABLE = False
+
+
+class ONNXStitcher:
+    """Stitcher for ONNX inference to handle large images using only numpy.
+
+    This class divides large images into patches at the model's expected resolution,
+    runs inference on each patch, and rescales the bounding box predictions back to
+    the original image coordinates. No overlap or NMS is applied (for E2E models).
+
+    Args:
+        onnx_session: ONNX runtime session
+        input_name: Name of the input tensor
+        output_names: Names of the output tensors
+        size: Patch size (height, width), typically (512, 512)
+        confidence_threshold: Minimum confidence score for detections (default: 0.5)
+    """
+
+    def __init__(
+        self,
+        onnx_session,
+        input_name: str,
+        output_names: List[str],
+        size: Tuple[int, int] = (512, 512),
+        confidence_threshold: float = 0.5,
+        gpu_device=None,
+    ):
+        self.session = onnx_session
+        self.input_name = input_name
+        self.output_names = output_names
+        self.size = size
+        self.confidence_threshold = confidence_threshold
+        self.gpu_device = gpu_device
+
+    def _get_gpu_memory_mb(self) -> Optional[float]:
+        """Get current GPU memory usage in MB."""
+        if not self.gpu_device:
+            return None
+        try:
+            info = pynvml.nvmlDeviceGetMemoryInfo(self.gpu_device)
+            return info.used / (1024 * 1024)  # Convert to MB
+        except Exception:
+            return None
+
+    def __call__(self, image: np.ndarray) -> Dict[str, np.ndarray]:
+        """Apply stitching algorithm to the image.
+
+        Args:
+            image: Input image array of shape [C, H, W] (normalized)
+
+        Returns:
+            Dictionary containing:
+                - 'boxes': Array of shape [N, 4] with boxes in (x1, y1, x2, y2) format
+                - 'scores': Array of shape [N] with confidence scores
+                - 'labels': Array of shape [N] with class labels
+                - 'metrics': Dictionary with 'stitch_steps', 'cpu_memory_mb', and 'gpu_memory_mb'
+        """
+        # Start memory tracking
+        tracemalloc.start()
+
+        # Track GPU memory before inference
+        gpu_mem_before = self._get_gpu_memory_mb()
+
+        # Get image dimensions
+        c, h, w = image.shape
+
+        # Calculate patch grid (no overlap)
+        patch_h, patch_w = self.size
+
+        # Calculate number of patches
+        n_patches_h = max(1, int(np.ceil(h / patch_h)))
+        n_patches_w = max(1, int(np.ceil(w / patch_w)))
+
+        all_boxes = []
+        all_scores = []
+        all_labels = []
+
+        # Track number of patches processed
+        stitch_steps = 0
+
+        # Process each patch
+        for i in range(n_patches_h):
+            for j in range(n_patches_w):
+                stitch_steps += 1
+                # Calculate patch coordinates (no overlap)
+                y1 = i * patch_h
+                x1 = j * patch_w
+                y2 = min(y1 + patch_h, h)
+                x2 = min(x1 + patch_w, w)
+
+                # Extract patch
+                patch = image[:, y1:y2, x1:x2]
+
+                # Pad if needed
+                if patch.shape[1] != patch_h or patch.shape[2] != patch_w:
+                    padded = np.zeros((c, patch_h, patch_w), dtype=np.float32)
+                    padded[:, :patch.shape[1], :patch.shape[2]] = patch
+                    patch = padded
+
+                # Run inference on patch
+                patch_batch = patch[np.newaxis, :, :, :]  # Add batch dimension
+                outputs = self.session.run(self.output_names, {self.input_name: patch_batch})
+
+                pred_logits = outputs[0][0]  # [num_queries, num_classes]
+                pred_boxes = outputs[1][0]   # [num_queries, 4]
+
+                # Convert logits to scores (sigmoid)
+                pred_scores = 1 / (1 + np.exp(-pred_logits))
+
+                # Get max score and class for each query
+                scores = pred_scores.max(axis=-1)
+                labels = pred_scores.argmax(axis=-1) + 1  # Convert to 1-indexed
+
+                # Filter by confidence threshold
+                keep = scores > self.confidence_threshold
+                boxes = pred_boxes[keep]
+                scores = scores[keep]
+                labels = labels[keep]
+
+                if len(boxes) == 0:
+                    continue
+
+                # Convert boxes from normalized [cx, cy, w, h] to pixel [x1, y1, x2, y2]
+                boxes = self._box_cxcywh_to_xyxy(boxes)
+                boxes = boxes * patch_w  # Denormalize to patch size
+
+                # Rescale boxes to original image coordinates
+                boxes[:, [0, 2]] += x1  # Add x offset
+                boxes[:, [1, 3]] += y1  # Add y offset
+
+                all_boxes.append(boxes)
+                all_scores.append(scores)
+                all_labels.append(labels)
+
+        # Get memory usage and stop tracking
+        current, peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+        cpu_memory_used_mb = peak / (1024 * 1024)  # Convert to MB
+
+        # Track GPU memory after inference
+        gpu_mem_after = self._get_gpu_memory_mb()
+
+        # Calculate GPU memory delta
+        gpu_memory_used_mb = None
+        if gpu_mem_before is not None and gpu_mem_after is not None:
+            gpu_memory_used_mb = round(gpu_mem_after - gpu_mem_before, 2)
+
+        # Prepare metrics
+        metrics = {
+            'stitch_steps': stitch_steps,
+            'cpu_memory_mb': round(cpu_memory_used_mb, 2),
+            'gpu_memory_mb': gpu_memory_used_mb
+        }
+
+        # Combine all detections
+        if len(all_boxes) == 0:
+            return {
+                'boxes': np.array([], dtype=np.float32).reshape(0, 4),
+                'scores': np.array([], dtype=np.float32),
+                'labels': np.array([], dtype=np.int64),
+                'metrics': metrics
+            }
+
+        all_boxes = np.concatenate(all_boxes, axis=0)
+        all_scores = np.concatenate(all_scores, axis=0)
+        all_labels = np.concatenate(all_labels, axis=0)
+
+        # No NMS for E2E models
+        return {
+            'boxes': all_boxes,
+            'scores': all_scores,
+            'labels': all_labels,
+            'metrics': metrics
+        }
+
+    @staticmethod
+    def _box_cxcywh_to_xyxy(boxes: np.ndarray) -> np.ndarray:
+        """Convert boxes from center format to corner format."""
+        if len(boxes) == 0:
+            return boxes
+        cx, cy, w, h = boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3]
+        x1, y1 = cx - 0.5 * w, cy - 0.5 * h
+        x2, y2 = cx + 0.5 * w, cy + 0.5 * h
+        return np.stack([x1, y1, x2, y2], axis=-1)
