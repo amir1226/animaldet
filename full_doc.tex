@@ -255,7 +255,8 @@ Primero, la pantalla principal:
 \caption{Pantalla principal}
 \end{figure}
 
-Puede elegir sus propias imágenes o seleccionar una de las muestras.
+Puede elegir sus propias imágenes o seleccionar una de las muestras, donde se 
+incluye una imagen de muestra por cada clase.
 
 Si decide seleccionar una de las muestras, verá las anotaciones de la imagen y un botón para ejecutar predicciones:
 
@@ -305,14 +306,15 @@ Cuando elige una confianza más baja puede esperar sobre-predicción como se mue
 
 Puede funcionar para propósitos de experimentación, pero por favor tenga cuidado.
 
-\section{Comparación de experimentos: veamos cómo se desempeñó el modelo}
+\section{Comparación de resultados: veamos cómo se desempeñó el modelo}
 
-Hemos agregado una vista de experimentos donde puede ver detecciones sobre todo el conjunto de datos de prueba comparado con el ground truth:
+Hemos agregado una vista de resultados donde puede ver detecciones sobre todo el conjunto de datos de prueba comparado con el ground truth:
 
+Allí podra filtrar por clase y ver las detecciones de el modelo comparado con las anotaciones reales.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.8\textwidth]{static/img/guide/experiments.png}
-\caption{Vista de experimentos}
+\includegraphics[width=0.8\textwidth]{static/img/guide/results.png}
+\caption{Vista de resultados}
 \end{figure}
 
 Allí puede elegir cualquier imagen del conjunto de prueba y verificar la diferencia entre el ground truth y sus predicciones.

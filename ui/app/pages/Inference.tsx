@@ -42,7 +42,7 @@ function Inference() {
   const [availableModels, setAvailableModels] = useState<ModelsResponse | null>(null)
   const [detectionHistory, setDetectionHistory] = useState<DetectionHistoryItem[]>([])
   const [modalItem, setModalItem] = useState<DetectionHistoryItem | null>(null)
-  const [sampleImages, setSampleImages] = useState<string[]>([])
+  const [sampleImages, setSampleImages] = useState<typeof LARGE_SAMPLE_IMAGES>([])
   const [showGroundTruth, setShowGroundTruth] = useState(true)
   const [showInferences, setShowInferences] = useState(true)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -172,7 +172,7 @@ function Inference() {
     }
 
     fetchModels()
-    setSampleImages([...LARGE_SAMPLE_IMAGES])
+    setSampleImages(LARGE_SAMPLE_IMAGES)
   }, [])
 
   // Update confidence when model changes
@@ -213,19 +213,20 @@ function Inference() {
       if (!ctx) return
       ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-      const colors = ['#D97706', '#000000', '#92400E', '#451A03']
+      const colors = ['#D97706', '#3B82F6', '#10B981', '#EF4444', '#8B5CF6', '#F59E0B']
 
-      // Draw ground truth boxes first (in green, dashed)
+      // Draw ground truth boxes first (dashed)
       if (groundTruthDets && showGroundTruth) {
         groundTruthDets.forEach((det) => {
           const { x, y, w, h, confidence } = det.bbox
+          const color = colors[det.class_id % colors.length]
 
           const scaledX = x * scaleX
           const scaledY = y * scaleY
           const scaledW = w * scaleX
           const scaledH = h * scaleY
 
-          ctx.strokeStyle = '#22C55E'
+          ctx.strokeStyle = color
           ctx.lineWidth = 2
           ctx.setLineDash([5, 5])
           ctx.strokeRect(scaledX, scaledY, scaledW, scaledH)
@@ -239,7 +240,7 @@ function Inference() {
 
           const labelY = scaledY > textHeight + padding ? scaledY - 2 : scaledY + textHeight + padding
 
-          ctx.fillStyle = '#22C55E'
+          ctx.fillStyle = color
           ctx.fillRect(scaledX, labelY - textHeight, textWidth + padding * 2, textHeight)
 
           ctx.fillStyle = '#fff'
@@ -247,7 +248,7 @@ function Inference() {
         })
       }
 
-      // Draw inference detections
+      // Draw inference detections (solid)
       if (showInferences) {
         ctx.setLineDash([])
         detections.forEach((det) => {
@@ -303,15 +304,18 @@ function Inference() {
       if (!ctx) return
       ctx.clearRect(0, 0, canvas.width, canvas.height)
 
+      const colors = ['#D97706', '#3B82F6', '#10B981', '#EF4444', '#8B5CF6', '#F59E0B']
+
       groundTruthDets.forEach((det) => {
         const { x, y, w, h } = det.bbox
+        const color = colors[det.class_id % colors.length]
 
         const scaledX = x * scaleX
         const scaledY = y * scaleY
         const scaledW = w * scaleX
         const scaledH = h * scaleY
 
-        ctx.strokeStyle = '#22C55E'
+        ctx.strokeStyle = color
         ctx.lineWidth = 2
         ctx.setLineDash([])
         ctx.strokeRect(scaledX, scaledY, scaledW, scaledH)
@@ -325,7 +329,7 @@ function Inference() {
 
         const labelY = scaledY > textHeight + padding ? scaledY - 2 : scaledY + textHeight + padding
 
-        ctx.fillStyle = '#22C55E'
+        ctx.fillStyle = color
         ctx.fillRect(scaledX, labelY - textHeight, textWidth + padding * 2, textHeight)
 
         ctx.fillStyle = '#fff'
@@ -355,7 +359,7 @@ function Inference() {
       if (!ctx) return
       ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-      const colors = ['#D97706', '#000000', '#92400E', '#451A03']
+      const colors = ['#D97706', '#3B82F6', '#10B981', '#EF4444', '#8B5CF6', '#F59E0B']
 
       detections.forEach((det) => {
         const { x, y, w, h, confidence } = det.bbox
@@ -506,25 +510,25 @@ function Inference() {
             Click to load an image or download it for later use
           </p>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {sampleImages.map((imageName) => (
+            {sampleImages.map((sample) => (
               <div
-                key={imageName}
+                key={sample.name}
                 className="border border-gray-300 rounded overflow-hidden bg-white hover:shadow-lg transition-shadow group"
               >
                 <div
                   className="cursor-pointer relative aspect-square bg-gray-200 overflow-hidden"
-                  onClick={() => loadSampleImage(imageName)}
+                  onClick={() => loadSampleImage(sample.name)}
                 >
                   <img
-                    src={`/demo_images/${imageName}`}
-                    alt={imageName}
+                    src={`/demo_images/${sample.name}`}
+                    alt={sample.name}
                     className="w-full h-full object-cover transition-opacity duration-300"
                     onLoad={(e) => {
                       const target = e.target as HTMLImageElement
                       target.style.opacity = '1'
                     }}
                     onError={(e) => {
-                      console.error(`Failed to load image: ${imageName}`)
+                      console.error(`Failed to load image: ${sample.name}`)
                       const target = e.target as HTMLImageElement
                       target.style.display = 'none'
                       const parent = target.parentElement
@@ -538,9 +542,10 @@ function Inference() {
                   />
                 </div>
                 <div className="p-2">
-                  <p className="text-xs text-gray-600 mb-2 truncate" title={imageName}>{imageName}</p>
+                  <p className="text-xs font-semibold text-gray-800 mb-1">{sample.class}</p>
+                  <p className="text-xs text-gray-500 mb-2 truncate" title={sample.name}>{sample.name}</p>
                   <button
-                    onClick={() => downloadSampleImage(imageName)}
+                    onClick={() => downloadSampleImage(sample.name)}
                     className="w-full text-xs px-2 py-1 bg-black text-white rounded hover:bg-gray-800"
                   >
                     Download
@@ -592,21 +597,24 @@ function Inference() {
             <div className="border border-gray-300 p-4 bg-gray-50 mb-6">
               <h3 className="text-sm font-semibold mb-3 text-gray-700">Quick Switch Sample Images</h3>
               <div className="flex gap-3 overflow-x-auto pb-2">
-                {sampleImages.map((imageName) => (
+                {sampleImages.map((sample) => (
                   <div
-                    key={imageName}
-                    onClick={() => loadSampleImage(imageName)}
+                    key={sample.name}
+                    onClick={() => loadSampleImage(sample.name)}
                     className={`flex-shrink-0 w-24 border-2 rounded overflow-hidden cursor-pointer transition-all ${
-                      currentImageName === imageName
+                      currentImageName === sample.name
                         ? 'border-black shadow-md'
                         : 'border-gray-300 hover:border-gray-400'
                     }`}
                   >
                     <img
-                      src={`/demo_images/${imageName}`}
-                      alt={imageName}
-                      className="w-full h-24 object-cover"
+                      src={`/demo_images/${sample.name}`}
+                      alt={sample.class}
+                      className="w-full h-20 object-cover"
                     />
+                    <div className="bg-white px-1 py-0.5 text-xs text-center font-semibold text-gray-700">
+                      {sample.class}
+                    </div>
                   </div>
                 ))}
               </div>
