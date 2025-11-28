@@ -1,20 +1,21 @@
 \documentclass[11pt,a4paper]{article}
 \usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
 \usepackage{graphicx}
 \usepackage{hyperref}
 \usepackage{listings}
 \usepackage{float}
 
-\title{Animaldet Documentation}
+\title{Documentación de Animaldet}
 \date{}
 
 \begin{document}
 
 \maketitle
 
-\section{About the team}
+\section{Acerca del equipo}
 
-The dream team is integrated by:
+El equipo está integrado por:
 
 \begin{itemize}
     \item Amir Sadour
@@ -23,145 +24,198 @@ The dream team is integrated by:
     \item Luis Manrique
 \end{itemize}
 
-\section{Live demo}
+\section{Demo en vivo}
 
-You can see a demo in this \href{http://animaldet-alb-510958915.us-east-1.elb.amazonaws.com/}{link}
+Puede ver una demostración en este \href{http://animaldet-alb-510958915.us-east-1.elb.amazonaws.com/}{enlace}
 
-\section{Repository}
+\section{Repositorio}
 
-Your code could be found on \href{https://github.com/amir1226/animaldet}{github}
+El código puede encontrarse en \href{https://github.com/amir1226/animaldet}{github}
 
-\section{General animaldet installation guide}
+\section{Guía general de instalación de Animaldet}
 
-Animaldet was built as a containerized application which can run locally or at any cloud which support containers
+Animaldet fue construido como una aplicación contenerizada que puede ejecutarse localmente o en cualquier nube que soporte contenedores
 
-\section{Local deployment}
+\section{Despliegue local}
 
-First of all with the repo cloned you must execute
+Primero, con el repositorio clonado debe ejecutar
 \begin{lstlisting}[language=bash]
 git lfs pull
 \end{lstlisting}
 
-To get models and other useful information to deploy your model.
+Para obtener los modelos y otra información útil para desplegar su modelo.
 
-You should have \texttt{docker} installed.
+Debe tener \texttt{docker} instalado.
 
-After that you can execute
+Después de eso puede ejecutar
 
 \begin{lstlisting}[language=bash]
 make build
 docker run -p 8000:8000 animaldet:latest
 \end{lstlisting}
 
-Then when opening in your browser \texttt{localhost:8000} you must see the application running.
+Luego al abrir en su navegador \texttt{localhost:8000} debe ver la aplicación funcionando.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.8\textwidth]{static/img/main_view.png}
-\caption{Main view}
+\caption{Vista principal}
 \end{figure}
 
-For user guide about how to use Animaldet you can check the \href{USER_GUIDE.md}{next link}
+Para la guía de usuario sobre cómo usar Animaldet puede consultar este \href{USER_GUIDE.md}{enlace}
 
-\section{Cloud deployment}
+\section{Despliegue en la nube}
 
-Animaldet included deployment platform is \texttt{AWS ECS}, with the next architecture:
+La plataforma de despliegue incluida en Animaldet es \texttt{AWS ECS}, con la siguiente arquitectura:
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.8\textwidth]{static/img/architecture.png}
-\caption{Architecture}
+\caption{Arquitectura}
 \end{figure}
 
-We included all the required infrastructure as a code at \texttt{infra/aws}, there we use \texttt{terraform}.
+Incluimos toda la infraestructura requerida como código en \texttt{infra/aws}, donde usamos \texttt{terraform}.
 
-In order to deploy the application you must configure your aws credentials, more information at \href{https://docs.aws.amazon.com/cli/v1/userguide/cli-configure-files.html}{aws cli configuration documentation}
+Para desplegar la aplicación debe configurar sus credenciales de AWS, más información en \href{https://docs.aws.amazon.com/cli/v1/userguide/cli-configure-files.html}{documentación de configuración de AWS CLI}
 
-Commands to deploy the application
+Comandos para desplegar la aplicación
 
 \begin{lstlisting}[language=bash]
 make deploy
 \end{lstlisting}
 
-It will execute \texttt{docker build}, then \texttt{terraform apply} which is going to:
+Esto ejecutará \texttt{docker build}, luego \texttt{terraform apply} que va a:
 
 \begin{enumerate}
-    \item Build docker image locally
-    \item Login you to ECS registry
-    \item Push the image to ECS
-    \item Create clusters, task definitions, policies and load balancer to get the application working.
+    \item Construir la imagen Docker localmente
+    \item Iniciar sesión en el registro ECS
+    \item Subir la imagen a ECS
+    \item Crear clusters, definiciones de tareas, políticas y balanceador de carga para que la aplicación funcione
 \end{enumerate}
 
-\section{Animaldet: how to use our animal detection tool}
+\section{Parametrización}
 
-First of all, the main screen:
+El sistema permite ajustar parámetros de funcionamiento mediante variables de entorno:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|l|p{6cm}|}
+\hline
+\textbf{Variable} & \textbf{Valor por defecto} & \textbf{Descripción} \\
+\hline
+\texttt{MODEL\_PATH} & \texttt{model.onnx} & Ruta al modelo ONNX \\
+\hline
+\texttt{CONFIDENCE\_THRESHOLD} & \texttt{0.5} & Umbral de confianza (0.0-1.0) \\
+\hline
+\texttt{NMS\_THRESHOLD} & \texttt{0.45} & Umbral de NMS \\
+\hline
+\texttt{RESOLUTION} & \texttt{512} & Resolución de entrada \\
+\hline
+\texttt{USE\_STITCHER} & \texttt{true} & Habilitar stitching \\
+\hline
+\texttt{PORT} & \texttt{8000} & Puerto HTTP \\
+\hline
+\end{tabular}
+\caption{Variables de entorno configurables}
+\end{table}
+
+\subsection{Ejemplo de configuración}
+
+\textbf{Usando variables de entorno:}
+
+\begin{lstlisting}[language=bash]
+docker run -p 8000:8000 \
+  -e CONFIDENCE_THRESHOLD=0.6 \
+  -e RESOLUTION=640 \
+  animaldet:latest
+\end{lstlisting}
+
+\textbf{Usando archivo .env:}
+
+\begin{lstlisting}
+MODEL_PATH=model.onnx
+CONFIDENCE_THRESHOLD=0.5
+RESOLUTION=512
+USE_STITCHER=true
+PORT=8000
+\end{lstlisting}
+
+Ejecutar con:
+
+\begin{lstlisting}[language=bash]
+docker run -p 8000:8000 --env-file .env animaldet:latest
+\end{lstlisting}
+
+\section{Animaldet: cómo usar nuestra herramienta de detección de animales}
+
+Primero, la pantalla principal:
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.8\textwidth]{static/img/main_view.png}
-\caption{Main screen}
+\caption{Pantalla principal}
 \end{figure}
 
-You may chose your own images or select one of the sample ones.
+Puede elegir sus propias imágenes o seleccionar una de las muestras.
 
-If you decide to pick one of the samples, you are going to see the image annotations and a button to predict executions:
+Si decide seleccionar una de las muestras, verá las anotaciones de la imagen y un botón para ejecutar predicciones:
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.8\textwidth]{static/img/guide/sample_chosen.png}
-\caption{Sample chosen}
+\caption{Muestra seleccionada}
 \end{figure}
 
-You can also pick between \texttt{small} and \texttt{nano} model, and change the model confidence.
+También puede elegir entre el modelo \texttt{small} y \texttt{nano}, y cambiar la confianza del modelo.
 
-\subsection{Model size}
+\subsection{Tamaño del modelo}
 
-Nano model uses 30\% less ram than Small model, but as it uses a lower resolution it must perform more inferences over the whole image, inference times does not differ much between those models.
+El modelo Nano usa 30\% menos RAM que el modelo Small, pero como usa una resolución menor debe realizar más inferencias sobre toda la imagen, los tiempos de inferencia no difieren mucho entre estos modelos.
 
-\subsection{Confidence}
+\subsection{Confianza}
 
-Each model has its own suggested confidence, confidence is a model output where it told us how confident the model is about a found bounding box with its respective class, your recommended confidence is the one which maximizes performance but you may experiment with different values
+Cada modelo tiene su propia confianza sugerida, la confianza es una salida del modelo que nos indica qué tan seguro está sobre una caja delimitadora encontrada con su respectiva clase, su confianza recomendada es la que maximiza el rendimiento pero puede experimentar con diferentes valores
 
-\subsection{Performing inference}
+\subsection{Realizando inferencia}
 
-Once the image and parameters are chosen, you can click then \texttt{Detect Animals} button, and a loading screen must start
+Una vez que la imagen y los parámetros están elegidos, puede hacer clic en el botón \texttt{Detect Animals} y comenzará una pantalla de carga
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.8\textwidth]{static/img/guide/loading.png}
-\caption{Loading screen}
+\caption{Pantalla de carga}
 \end{figure}
 
-Once finished it must show the image detections:
+Una vez finalizado mostrará las detecciones de la imagen:
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.8\textwidth]{static/img/guide/detections.png}
-\caption{Detections}
+\caption{Detecciones}
 \end{figure}
 
-\section{Low confidence: over detection}
+\section{Confianza baja: sobre-detección}
 
-When you pick a lower confidence you may expect over prediction as shown in the next capture:
+Cuando elige una confianza más baja puede esperar sobre-predicción como se muestra en la siguiente captura:
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.8\textwidth]{static/img/guide/overdetection.png}
-\caption{Over detection}
+\caption{Sobre-detección}
 \end{figure}
 
-It may work for experimentation purposes, but please be careful.
+Puede funcionar para propósitos de experimentación, pero por favor tenga cuidado.
 
-\section{Experiment comparison: lets see how the model performed}
+\section{Comparación de experimentos: veamos cómo se desempeñó el modelo}
 
-We have added an experiments view where you can see detections over the whole test dataset compared with the ground truth:
+Hemos agregado una vista de experimentos donde puede ver detecciones sobre todo el conjunto de datos de prueba comparado con el ground truth:
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.8\textwidth]{static/img/guide/experiments.png}
-\caption{Experiments view}
+\caption{Vista de experimentos}
 \end{figure}
 
-There you can pick any image from the test set and check the difference between the ground truth and your predictions.
+Allí puede elegir cualquier imagen del conjunto de prueba y verificar la diferencia entre el ground truth y sus predicciones.
 
 \end{document}
