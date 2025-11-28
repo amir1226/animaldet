@@ -5,6 +5,49 @@
 \usepackage{hyperref}
 \usepackage{listings}
 \usepackage{float}
+\usepackage{xcolor}
+
+% Configuración de estilo para código
+\definecolor{codegray}{rgb}{0.95,0.95,0.95}
+\definecolor{framecolor}{rgb}{0.85,0.85,0.85}
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+
+% Estilo por defecto para código
+\lstset{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=tb,
+    framerule=0.8pt,
+    rulecolor=\color{framecolor},
+    numbers=none,
+    xleftmargin=15pt,
+    xrightmargin=15pt,
+    framexleftmargin=10pt,
+    framexrightmargin=10pt,
+    aboveskip=12pt,
+    belowskip=12pt,
+    showstringspaces=false,
+    columns=flexible
+}
+
+% Estilo específico para comandos bash
+\lstdefinestyle{bashstyle}{
+    language=bash,
+    backgroundcolor=\color{black!90},
+    basicstyle=\ttfamily\footnotesize\color{white},
+    breaklines=true,
+    frame=tb,
+    framerule=1pt,
+    rulecolor=\color{black},
+    xleftmargin=15pt,
+    xrightmargin=15pt,
+    framexleftmargin=10pt,
+    framexrightmargin=10pt,
+    aboveskip=12pt,
+    belowskip=12pt
+}
 
 \title{Documentación de Animaldet}
 \date{}
@@ -36,10 +79,63 @@ El código puede encontrarse en \href{https://github.com/amir1226/animaldet}{git
 
 Animaldet fue construido como una aplicación contenerizada que puede ejecutarse localmente o en cualquier nube que soporte contenedores
 
+\section{Dependencias y Requisitos del Sistema}
+
+\subsection{Requisitos de Hardware}
+
+\begin{itemize}
+    \item \textbf{Memoria RAM:} Mínimo 8 GB (recomendado 16 GB)
+    \item \textbf{Espacio en disco:} 10 GB disponibles
+    \item \textbf{GPU (opcional):} NVIDIA con soporte CUDA 11.8+ para inferencia acelerada
+    \item \textbf{CPU:} Procesador multi-core (mínimo 4 cores)
+\end{itemize}
+
+\subsection{Software Requerido}
+
+\textbf{Para ejecución con Docker (Recomendado):}
+\begin{itemize}
+    \item \textbf{Docker Desktop} (versión 20.10 o superior) o Docker Engine en Linux
+    \item \textbf{Git} (versión 2.0 o superior)
+    \item \textbf{Git LFS} para descarga de modelos
+\end{itemize}
+
+\textbf{Para desarrollo local:}
+\begin{itemize}
+    \item \textbf{Python:} 3.12 o superior
+    \item \textbf{Node.js:} 20.x o superior (para compilar frontend)
+    \item \textbf{uv:} Gestor de paquetes de Python
+\end{itemize}
+
+\subsection{Dependencias de Python}
+
+El proyecto utiliza las siguientes librerías principales:
+
+\begin{itemize}
+    \item \textbf{FastAPI:} Framework web para la API
+    \item \textbf{ONNX Runtime:} Motor de inferencia optimizado
+    \item \textbf{Pillow:} Procesamiento de imágenes
+    \item \textbf{NumPy:} Computación numérica
+    \item \textbf{Uvicorn:} Servidor ASGI
+\end{itemize}
+
+Ver archivo \texttt{pyproject.toml} para lista completa de dependencias.
+
+\subsection{Dependencias del Frontend}
+
+\begin{itemize}
+    \item \textbf{React:} 18.x - Framework UI
+    \item \textbf{Vite:} Build tool y dev server
+    \item \textbf{TypeScript:} Tipado estático
+    \item \textbf{TailwindCSS:} Framework de estilos
+\end{itemize}
+
+Ver archivo \texttt{ui/package.json} para lista completa.
+
 \section{Despliegue local}
 
 Primero, con el repositorio clonado debe ejecutar
-\begin{lstlisting}[language=bash]
+
+\begin{lstlisting}[style=bashstyle]
 git lfs pull
 \end{lstlisting}
 
@@ -49,7 +145,7 @@ Debe tener \texttt{docker} instalado.
 
 Después de eso puede ejecutar
 
-\begin{lstlisting}[language=bash]
+\begin{lstlisting}[style=bashstyle]
 make build
 docker run -p 8000:8000 animaldet:latest
 \end{lstlisting}
@@ -80,7 +176,7 @@ Para desplegar la aplicación debe configurar sus credenciales de AWS, más info
 
 Comandos para desplegar la aplicación
 
-\begin{lstlisting}[language=bash]
+\begin{lstlisting}[style=bashstyle]
 make deploy
 \end{lstlisting}
 
@@ -121,16 +217,18 @@ El sistema permite ajustar parámetros de funcionamiento mediante variables de e
 
 \subsection{Ejemplo de configuración}
 
-\textbf{Usando variables de entorno:}
+\textbf{Opción 1: Usando variables de entorno}
 
-\begin{lstlisting}[language=bash]
+\begin{lstlisting}[style=bashstyle]
 docker run -p 8000:8000 \
   -e CONFIDENCE_THRESHOLD=0.6 \
   -e RESOLUTION=640 \
   animaldet:latest
 \end{lstlisting}
 
-\textbf{Usando archivo .env:}
+\textbf{Opción 2: Usando archivo .env}
+
+Crear archivo \texttt{.env} en la raíz del proyecto:
 
 \begin{lstlisting}
 MODEL_PATH=model.onnx
@@ -142,7 +240,7 @@ PORT=8000
 
 Ejecutar con:
 
-\begin{lstlisting}[language=bash]
+\begin{lstlisting}[style=bashstyle]
 docker run -p 8000:8000 --env-file .env animaldet:latest
 \end{lstlisting}
 
